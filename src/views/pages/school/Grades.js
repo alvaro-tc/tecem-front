@@ -1,0 +1,855 @@
+// Re-compile trigger 2
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+    Grid,
+    CardContent,
+    Typography,
+    Divider,
+    TableContainer,
+    Table,
+    TableHead,
+    TableRow,
+    TableCell,
+    TableBody,
+    TextField,
+    Button,
+    InputAdornment,
+    CircularProgress,
+    Snackbar,
+    IconButton,
+    Tooltip,
+    Dialog,
+    DialogContent
+} from '@material-ui/core';
+import MuiAlert from '@material-ui/lab/Alert';
+import { IconSearch, IconDeviceFloppy, IconSettings, IconEye, IconNotebook, IconDownload } from '@tabler/icons';
+import MainCard from './../../../ui-component/cards/MainCard';
+import axios from 'axios';
+import configData from '../../../config';
+import { useSelector } from 'react-redux';
+import GradeSettingsDialog from './GradeSettingsDialog';
+import ManageProjectDialog from './components/ManageProjectDialog';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import ExportGradesDialog from './ExportGradesDialog';
+
+const Grades = () => {
+    const account = useSelector((state) => state.account);
+    const activeCourse = useSelector((state) => state.account.activeCourse);
+
+    const [loading, setLoading] = useState(false);
+    const [structure, setStructure] = useState([]); // Hierarchical criteria
+    const [rows, setRows] = useState([]);
+    const [search, setSearch] = useState('');
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [changes, setChanges] = useState({}); // { "enrollmentId-critId": newVal }
+    const [settingsOpen, setSettingsOpen] = useState(false);
+
+    // Project Management Logic
+    const [projects, setProjects] = useState([]);
+    const [manageDialogOpen, setManageDialogOpen] = useState(false);
+    const [currentProject, setCurrentProject] = useState(null);
+    const [showCriterionGrades, setShowCriterionGrades] = useState(true);
+    const [showFinalGrade, setShowFinalGrade] = useState(true);
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+    // ... (existing useEffect, loadProjects, etc.)
+
+    /* const handleExport = (type) => {
+        if (!activeCourse) return;
+
+        // 1. Prepare Data
+        const headers = ["No.", "CI", "Paterno", "Materno", "Nombres"];
+        const dataKeys = ["ci", "paterno", "materno", "nombre"];
+
+        // Dynamic Headers based on visibility
+        structure.forEach(group => {
+            const visibleSubs = group.sub_criteria.filter(s => s.visible);
+            const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+
+            if ((visibleSubs.length + visibleSpecials.length) === 0 && !showCriterionGrades) return;
+
+            visibleSubs.forEach(sub => {
+                headers.push(`${sub.name} (${sub.percentage}%)`);
+                dataKeys.push(sub.id);
+            });
+            visibleSpecials.forEach(spec => {
+                headers.push(`(Extra) ${spec.name}`);
+                dataKeys.push(spec.id);
+            });
+            if (showCriterionGrades) {
+                headers.push(`Nota ${group.name} (${group.weight}%)`);
+                dataKeys.push(`criterion-${group.id}`); // logical key
+            }
+        });
+
+        if (showFinalGrade) {
+            headers.push("Nota Final");
+            dataKeys.push("final_grade");
+        }
+
+        // Build Rows
+        const exportRows = filteredRows.map((row, index) => {
+            const rowData = [
+                index + 1,
+                row.ci,
+                row.paterno,
+                row.materno,
+                row.nombre
+            ];
+
+            structure.forEach(group => {
+                const visibleSubs = group.sub_criteria.filter(s => s.visible);
+                const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+
+                if ((visibleSubs.length + visibleSpecials.length) === 0 && !showCriterionGrades) return;
+
+                visibleSubs.forEach(sub => {
+                    rowData.push(row.grades[sub.id] ? parseFloat(row.grades[sub.id]).toFixed(2) : '-');
+                });
+                visibleSpecials.forEach(spec => {
+                    rowData.push(row.grades[spec.id] ? `+${parseFloat(row.grades[spec.id]).toFixed(2)}` : '-');
+                });
+                if (showCriterionGrades) {
+                    const criterionGrade = row._criterionGrades && row._criterionGrades[group.id]
+                        ? row._criterionGrades[group.id].grade
+                        : null;
+                    rowData.push(criterionGrade !== null ? criterionGrade.toFixed(2) : '-');
+                }
+            });
+
+            if (showFinalGrade) {
+                let finalGradeNumeric = 0;
+                if (row._criterionGrades) {
+                    Object.values(row._criterionGrades).forEach(({ grade }) => {
+                        if (grade !== null) finalGradeNumeric += grade;
+                    });
+                }
+                const finalGrade = finalGradeNumeric > 0 ? finalGradeNumeric.toFixed(2) : '-';
+                rowData.push(finalGrade);
+            }
+
+            return rowData;
+        });
+
+        const fileName = `Calificaciones_${activeCourse.subject_details?.name || 'Curso'}_${activeCourse.parallel || ''}_${new Date().toLocaleDateString('es-BO').replace(/\//g, '-')}`;
+
+        if (type === 'pdf') {
+            const doc = new jsPDF('landscape'); // Landscape for better column fit
+
+            // Header
+            doc.setFontSize(14);
+            doc.text(`Calificaciones: ${activeCourse.subject_details?.name || ''} - Paralelo ${activeCourse.parallel || ''}`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Fecha: ${new Date().toLocaleDateString('es-BO')}`, 14, 22);
+
+            doc.autoTable({
+                head: [headers],
+                body: exportRows,
+                startY: 25,
+                theme: 'plain', // Black and white simple theme
+                styles: { fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
+                headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }, // Light gray header
+            });
+
+            doc.save(`${fileName}.pdf`);
+        } else if (type === 'excel') {
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...exportRows]);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Calificaciones");
+            XLSX.writeFile(workbook, `${fileName}.xlsx`);
+        }
+    }; */
+
+    useEffect(() => {
+        if (activeCourse) {
+            fetchGradesheet();
+            loadProjects();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeCourse]);
+
+    const loadProjects = () => {
+        axios.get(`${configData.API_SERVER}projects/?course=${activeCourse.id}`)
+            .then(res => setProjects(res.data))
+            .catch(err => console.error(err));
+    };
+
+    const getUnavailableStudentIds = (subCriterionId, excludeProjectId = null) => {
+        if (!subCriterionId) return [];
+        const ids = [];
+        projects.forEach(p => {
+            if (p.sub_criterion === subCriterionId && p.id !== excludeProjectId) {
+                ids.push(...p.members);
+            }
+        });
+        return ids;
+    };
+
+    const handleManageProject = (project) => {
+        let maxScore = 100;
+        for (const group of structure) {
+            const sub = group.sub_criteria.find(s => s.id === project.sub_criterion);
+            if (sub) {
+                maxScore = sub.percentage;
+                break;
+            }
+        }
+        setCurrentProject({ ...project, maxScore });
+        setManageDialogOpen(true);
+    };
+
+    const handleSaveProject = (formData) => {
+        if (!currentProject) return;
+        const payload = {
+            ...formData,
+            course: activeCourse.id,
+            score: formData.score === '' ? null : formData.score
+        };
+
+        axios.put(`${configData.API_SERVER}projects/${currentProject.id}/`, payload)
+            .then(() => {
+                setManageDialogOpen(false);
+                setSnackbar({ open: true, message: 'Proyecto actualizado correctamente', severity: 'success' });
+                // Refresh both grades and projects
+                fetchGradesheet();
+                loadProjects();
+            })
+            .catch(err => {
+                console.error(err);
+                if (err.response && err.response.data && err.response.data[0]) {
+                    setSnackbar({ open: true, message: err.response.data[0], severity: 'error' });
+                } else {
+                    setSnackbar({ open: true, message: 'Error al actualizar proyecto', severity: 'error' });
+                }
+            });
+    };
+
+    const fetchGradesheet = () => {
+        setLoading(true);
+        axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
+        axios.get(`${configData.API_SERVER}criterion-scores/gradesheet/?course_id=${activeCourse.id}`)
+            .then(response => {
+                setStructure(response.data.structure || []);
+                setRows(response.data.rows || []);
+                setChanges({});
+            })
+            .catch(error => {
+                console.error(error);
+                setSnackbar({ open: true, message: 'Error cargando calificaciones', severity: 'error' });
+            })
+            .finally(() => setLoading(false));
+    };
+
+    const handleScoreChange = (enrollmentId, critId, value) => {
+        setRows(prevRows => prevRows.map(row => {
+            if (row.enrollment_id === enrollmentId) {
+                return {
+                    ...row,
+                    grades: {
+                        ...row.grades,
+                        [critId]: value
+                    }
+                };
+            }
+            return row;
+        }));
+
+        setChanges(prev => ({
+            ...prev,
+            [`${enrollmentId}-${critId}`]: value
+        }));
+    };
+
+    const handleSave = () => {
+        const updates = Object.keys(changes).map(key => {
+            // Key format: `${enrollmentId}-${critId}`
+            // If critId is complex (e.g., 'special-5'), simple split('-') fails.
+            // EnrollmentId is integer, so we split by FIRST hyphen.
+            const firstHyphenIndex = key.indexOf('-');
+            const enrollmentId = key.substring(0, firstHyphenIndex);
+            const critId = key.substring(firstHyphenIndex + 1);
+
+            return {
+                enrollment_id: parseInt(enrollmentId),
+                criterion_id: critId, // Keep as string if it's 'special-X', backend handles string parsing
+                score: parseFloat(changes[key]) || 0
+            };
+        });
+
+        if (updates.length === 0) return;
+
+        setLoading(true);
+        axios.post(`${configData.API_SERVER}criterion-scores/bulk_save/`, { updates })
+            .then(() => {
+                setSnackbar({ open: true, message: 'Calificaciones guardadas correctamente', severity: 'success' });
+                setChanges({});
+            })
+            .catch(error => {
+                console.error(error);
+                setSnackbar({ open: true, message: 'Error al guardar', severity: 'error' });
+            })
+            .finally(() => setLoading(false));
+    };
+
+    const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
+
+    const handleExport = (type) => {
+        if (!activeCourse) return;
+
+        // 1. Prepare Data
+        const headers = ["No.", "CI", "Paterno", "Materno", "Nombres"];
+        const dataKeys = ["ci", "paterno", "materno", "nombre"];
+
+        // Dynamic Headers based on visibility
+        structure.forEach(group => {
+            const visibleSubs = group.sub_criteria.filter(s => s.visible);
+            const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+
+            if ((visibleSubs.length + visibleSpecials.length) === 0 && !showCriterionGrades) return;
+
+            visibleSubs.forEach(sub => {
+                headers.push(`${sub.name} (${sub.percentage}%)`);
+                dataKeys.push(sub.id);
+            });
+            visibleSpecials.forEach(spec => {
+                headers.push(`(Extra) ${spec.name}`);
+                dataKeys.push(spec.id);
+            });
+            if (showCriterionGrades) {
+                headers.push(`Nota ${group.name} (${group.weight}%)`);
+                dataKeys.push(`criterion-${group.id}`); // logical key
+            }
+        });
+
+        if (showFinalGrade) {
+            headers.push("Nota Final");
+            dataKeys.push("final_grade");
+        }
+
+        // Build Rows
+        const exportRows = filteredRows.map((row, index) => {
+            const rowData = [
+                index + 1,
+                row.ci,
+                row.paterno,
+                row.materno,
+                row.nombre
+            ];
+
+            structure.forEach(group => {
+                const visibleSubs = group.sub_criteria.filter(s => s.visible);
+                const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+
+                if ((visibleSubs.length + visibleSpecials.length) === 0 && !showCriterionGrades) return;
+
+                visibleSubs.forEach(sub => {
+                    rowData.push(row.grades[sub.id] ? parseFloat(row.grades[sub.id]).toFixed(2) : '-');
+                });
+                visibleSpecials.forEach(spec => {
+                    rowData.push(row.grades[spec.id] ? `+${parseFloat(row.grades[spec.id]).toFixed(2)}` : '-');
+                });
+                if (showCriterionGrades) {
+                    const criterionGrade = row._criterionGrades && row._criterionGrades[group.id]
+                        ? row._criterionGrades[group.id].grade
+                        : null;
+                    rowData.push(criterionGrade !== null ? criterionGrade.toFixed(2) : '-');
+                }
+            });
+
+            if (showFinalGrade) {
+                let finalGradeNumeric = 0;
+                if (row._criterionGrades) {
+                    Object.values(row._criterionGrades).forEach(({ grade }) => {
+                        if (grade !== null) finalGradeNumeric += grade;
+                    });
+                }
+                const finalGrade = finalGradeNumeric > 0 ? finalGradeNumeric.toFixed(2) : '-';
+                rowData.push(finalGrade);
+            }
+
+            return rowData;
+        });
+
+        const fileName = `Calificaciones_${activeCourse.subject_details?.name || 'Curso'}_${activeCourse.parallel || ''}_${new Date().toLocaleDateString('es-BO').replace(/\//g, '-')}`;
+
+        if (type === 'pdf') {
+            const doc = new jsPDF('landscape'); // Landscape for better column fit
+
+            // Header
+            doc.setFontSize(14);
+            doc.text(`Calificaciones: ${activeCourse.subject_details?.name || ''} - Paralelo ${activeCourse.parallel || ''}`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Fecha: ${new Date().toLocaleDateString('es-BO')}`, 14, 22);
+
+            doc.autoTable({
+                head: [headers],
+                body: exportRows,
+                startY: 25,
+                theme: 'plain', // Black and white simple theme
+                styles: { fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
+                headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }, // Light gray header
+            });
+
+            doc.save(`${fileName}.pdf`);
+        } else if (type === 'excel') {
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...exportRows]);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Calificaciones");
+            XLSX.writeFile(workbook, `${fileName}.xlsx`);
+        }
+    };
+
+    // Filtering
+    const filteredRows = rows.filter(row => {
+        const term = search.toLowerCase();
+        return (
+            (row.paterno || '').toLowerCase().includes(term) ||
+            (row.materno || '').toLowerCase().includes(term) ||
+            (row.nombre || '').toLowerCase().includes(term) ||
+            (row.ci || '').toLowerCase().includes(term)
+        );
+    });
+
+    if (!activeCourse) {
+        return (
+            <MainCard title="Calificaciones">
+                <MuiAlert severity="warning">Seleccione un Paralelo en el buscador superior para gestionar calificaciones.</MuiAlert>
+            </MainCard>
+        );
+    }
+
+    // Helper to get visible flat list for body rendering
+    // const visibleSubCriteria = structure.flatMap(group =>
+    //    group.sub_criteria.filter(sub => sub.visible)
+    // );
+
+    return (
+        <MainCard title={`Calificaciones - ${activeCourse.subject_details?.name || ''} (${activeCourse.parallel || ''})`}>
+            <Dialog open={loading} onClose={() => { }}>
+                <DialogContent>
+                    <CircularProgress />
+                    <Typography>Cargando...</Typography>
+                </DialogContent>
+            </Dialog>
+
+            <ExportGradesDialog
+                open={exportDialogOpen}
+                onClose={() => setExportDialogOpen(false)}
+                onExport={handleExport}
+            />
+
+            <CardContent>
+                <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            fullWidth
+                            variant="outlined"
+                            placeholder="Buscar estudiante..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <IconSearch stroke={1.5} size="1rem" />
+                                    </InputAdornment>
+                                )
+                            }}
+                            size="small"
+                        />
+                    </Grid>
+                    <Grid item>
+                        <Tooltip title="Exportar Calificaciones">
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => setExportDialogOpen(true)}
+                                startIcon={<IconDownload />}
+                                style={{ marginRight: 8 }}
+                            >
+                                Exportar
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Ajustes de Calificaciones">
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => setSettingsOpen(true)}
+                                startIcon={<IconSettings />}
+                                style={{ marginRight: 8 }}
+                            >
+                                Ajustes
+                            </Button>
+                        </Tooltip>
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            startIcon={<IconDeviceFloppy />}
+                            onClick={handleSave}
+                            disabled={Object.keys(changes).length === 0 || loading}
+                        >
+                            Guardar Cambios
+                        </Button>
+                    </Grid>
+                </Grid>
+
+                <Divider style={{ margin: '20px 0' }} />
+
+                <TableContainer>
+                    <Table size="small" stickyHeader>
+                        <TableHead>
+                            {/* Group Header Row */}
+                            <TableRow>
+                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>CI</TableCell>
+                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>Paterno</TableCell>
+                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>Materno</TableCell>
+                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>Nombres</TableCell>
+                                {structure.map((group, index) => {
+                                    const visibleSubCount = group.sub_criteria.filter(s => s.visible).length;
+                                    const visibleSpecialCount = (group.special_criteria || []).filter(s => s.visible).length;
+                                    const totalVisible = visibleSubCount + visibleSpecialCount;
+
+                                    // Show nothing if no visible columns AND criterion grades are hidden
+                                    if (totalVisible === 0 && !showCriterionGrades) return null;
+
+                                    // Alternating background colors for groups
+                                    const bgColor = index % 2 === 0 ? '#e3f2fd' : '#f3e5f5';
+
+                                    return (
+                                        <React.Fragment key={group.id}>
+                                            {totalVisible > 0 && (
+                                                <TableCell
+                                                    colSpan={totalVisible}
+                                                    align="center"
+                                                    style={{
+                                                        backgroundColor: bgColor,
+                                                        borderLeft: '2px solid #aaa',
+                                                        borderTop: '2px solid #aaa',
+                                                        fontWeight: 'bold',
+                                                        color: '#333'
+                                                    }}
+                                                >
+                                                    {group.name} <span style={{ fontSize: '0.8em', fontWeight: 'normal' }}>({group.weight} Pts)</span>
+                                                </TableCell>
+                                            )}
+                                            {showCriterionGrades && <TableCell rowSpan={2} align="center" style={{ backgroundColor: bgColor, fontWeight: 'bold', borderRight: '2px solid #aaa', borderTop: '2px solid #aaa', borderLeft: totalVisible === 0 ? '2px solid #aaa' : '1px solid #666', minWidth: 80 }}>Nota<br />{group.name}</TableCell>}
+                                        </React.Fragment>
+                                    );
+                                })}
+                                {showFinalGrade && <TableCell rowSpan={2} align="center" style={{ backgroundColor: '#c8e6c9', fontWeight: 'bold', borderLeft: '3px solid #4caf50', color: '#2e7d32' }}>Nota Final</TableCell>}
+                            </TableRow>
+                            {/* SubCriteria Header Row */}
+                            <TableRow>
+                                {structure.map((group, index) => {
+                                    const visibleSubs = group.sub_criteria.filter(s => s.visible);
+                                    const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+                                    const totalVisible = visibleSubs.length + visibleSpecials.length;
+
+                                    // Skip if no visible columns AND criterion grades are hidden
+                                    if (totalVisible === 0 && !showCriterionGrades) return null;
+
+                                    return (
+                                        <React.Fragment key={group.id}>
+                                            {visibleSubs.map((sub, sIdx) => {
+                                                const isLast = sIdx === visibleSubs.length - 1 && visibleSpecials.length === 0 && !showCriterionGrades;
+                                                return (
+                                                    <TableCell
+                                                        key={sub.id}
+                                                        align="center"
+                                                        style={{
+                                                            minWidth: 100,
+                                                            borderLeft: 'none',
+                                                            borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                            backgroundColor: '#fafafa'
+                                                        }}
+                                                    >
+                                                        {sub.name}
+                                                        <Typography variant="caption" display="block" color="textSecondary">{sub.percentage} Pts</Typography>
+                                                    </TableCell>
+                                                );
+                                            })}
+                                            {visibleSpecials.map((spec, specIdx) => {
+                                                const isLast = specIdx === visibleSpecials.length - 1 && !showCriterionGrades;
+                                                return (
+                                                    <TableCell
+                                                        key={spec.id}
+                                                        align="center"
+                                                        style={{
+                                                            minWidth: 100,
+                                                            borderLeft: 'none',
+                                                            borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                            backgroundColor: '#fff3e0'
+                                                        }}
+                                                    >
+                                                        ⭐ {spec.name}
+                                                        <Typography variant="caption" display="block" style={{ color: '#e65100' }}>+{spec.percentage} pts</Typography>
+                                                    </TableCell>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </TableRow>
+                        </TableHead >
+                        <TableBody>
+                            {filteredRows.length === 0 ? (
+                                <TableRow><TableCell colSpan={10} align="center">No hay estudiantes.</TableCell></TableRow>
+                            ) : (
+                                filteredRows.map(row => (
+                                    <TableRow key={row.enrollment_id} hover>
+                                        <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: 0, zIndex: 5 }}>{row.ci}</TableCell>
+                                        <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: 80, zIndex: 5 }}>{row.paterno}</TableCell>
+                                        <TableCell style={{ backgroundColor: '#fff' }}>{row.materno}</TableCell>
+                                        <TableCell style={{ backgroundColor: '#fff', borderRight: '2px solid #ddd' }}>{row.nombre}</TableCell>
+                                        {structure.map((group, groupIndex) => {
+                                            const visibleSubs = group.sub_criteria.filter(sub => sub.visible);
+                                            const visibleSpecials = (group.special_criteria || []).filter(spec => spec.visible);
+
+                                            // Calculate criterion grade = Sum(subcriterios) + extraPoints
+                                            let criterionGrade = '-';
+                                            let criterionGradeNumeric = null;
+                                            let totalScore = 0;
+
+                                            // Sum regular sub-criteria scores
+                                            group.sub_criteria.forEach(sub => {
+                                                const score = row.grades[sub.id];
+                                                if (score !== undefined && score !== null && score !== '') {
+                                                    totalScore += parseFloat(score);
+                                                }
+                                            });
+
+                                            // Add special criteria (extra points) directly
+                                            let extraPoints = 0;
+                                            (group.special_criteria || []).forEach(spec => {
+                                                const score = row.grades[spec.id];
+                                                if (score !== undefined && score !== null && score !== '') {
+                                                    extraPoints += parseFloat(score);
+                                                }
+                                            });
+
+                                            // Total Score
+                                            if (totalScore > 0 || extraPoints > 0) {
+                                                const rawTotal = totalScore + extraPoints;
+                                                const maxWeight = parseFloat(group.weight);
+                                                // Cap the score at the criterion weight
+                                                criterionGradeNumeric = Math.min(rawTotal, maxWeight);
+                                                criterionGrade = criterionGradeNumeric.toFixed(2);
+                                            }
+
+                                            const bgColor = groupIndex % 2 === 0 ? '#bbdefb' : '#e1bee7';
+
+                                            return (
+                                                <React.Fragment key={group.id}>
+                                                    {visibleSubs.map((sub, sIdx) => {
+                                                        const isLast = sIdx === visibleSubs.length - 1 && visibleSpecials.length === 0 && !showCriterionGrades;
+                                                        return (
+                                                            <TableCell
+                                                                key={sub.id}
+                                                                align="center"
+                                                                style={{
+                                                                    borderLeft: 'none',
+                                                                    borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                                    backgroundColor: sub.editable ? 'inherit' : '#f5f5f5'
+                                                                }}
+                                                            >
+                                                                {sub.has_tasks || sub.has_projects ? (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                        <Typography variant="body2" style={{ marginRight: 8, fontWeight: 'bold' }}>
+                                                                            {row.grades[sub.id] !== undefined && row.grades[sub.id] !== null ? parseFloat(row.grades[sub.id]).toFixed(2) : '-'}
+                                                                        </Typography>
+                                                                        {sub.has_tasks ? (
+                                                                            <Tooltip title="Ver Tareas">
+                                                                                <IconButton
+                                                                                    component={Link}
+                                                                                    to={`/extras/task-grading?sub_criterion_id=${sub.id}`}
+                                                                                    size="small"
+                                                                                    color="primary"
+                                                                                >
+                                                                                    <IconEye size="1.2rem" />
+                                                                                </IconButton>
+                                                                            </Tooltip>
+                                                                        ) : sub.has_projects ? (
+                                                                            (() => {
+                                                                                const project = projects.find(p => p.sub_criterion === sub.id && p.members.includes(row.enrollment_id));
+                                                                                return (
+                                                                                    <Tooltip title={project ? `Gestionar Proyecto: ${project.name}` : "Estudiante sin proyecto asignado"}>
+                                                                                        <IconButton
+                                                                                            size="small"
+                                                                                            onClick={() => project ? handleManageProject(project) : null}
+                                                                                            style={{ color: project ? undefined : '#ccc' }}
+                                                                                            color={project ? "secondary" : "default"}
+                                                                                        >
+                                                                                            <IconNotebook size="1.2rem" />
+                                                                                        </IconButton>
+                                                                                    </Tooltip>
+                                                                                );
+                                                                            })()
+                                                                        ) : null}
+                                                                    </div>
+                                                                ) : sub.editable ? (
+                                                                    <TextField
+                                                                        type="number"
+                                                                        value={row.grades[sub.id] || ''}
+                                                                        onChange={(e) => {
+                                                                            let val = e.target.value;
+                                                                            if (val !== '') {
+                                                                                const numVal = parseFloat(val);
+                                                                                if (numVal > sub.percentage) {
+                                                                                    // Strict enforcement: Don't allow typing more
+                                                                                    return;
+                                                                                    // OR cap it? User said "No debes dejar poner". 
+                                                                                    // Blocking the input is safer.
+                                                                                }
+                                                                                if (numVal < 0) return;
+                                                                            }
+                                                                            handleScoreChange(row.enrollment_id, sub.id, val);
+                                                                        }}
+                                                                        variant="outlined"
+                                                                        size="small"
+                                                                        style={{ width: 80 }}
+                                                                        inputProps={{ min: 0, max: sub.percentage, step: "0.01", style: { textAlign: 'center' } }}
+                                                                    />
+                                                                ) : (
+                                                                    <Typography variant="body2" color="textSecondary" style={{ fontWeight: 500 }}>
+                                                                        {row.grades[sub.id] !== undefined && row.grades[sub.id] !== null ? parseFloat(row.grades[sub.id]).toFixed(2) : '-'}
+                                                                    </Typography>
+                                                                )}
+                                                            </TableCell>
+                                                        );
+                                                    })}
+                                                    {visibleSpecials.map((spec, specIdx) => {
+                                                        const isLast = specIdx === visibleSpecials.length - 1 && !showCriterionGrades;
+                                                        return (
+                                                            <TableCell
+                                                                key={spec.id}
+                                                                align="center"
+                                                                style={{
+                                                                    borderLeft: 'none',
+                                                                    borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                                    backgroundColor: '#fff3e0'
+                                                                }}
+                                                            >
+                                                                {spec.has_tasks ? (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                        <Typography variant="body2" style={{ marginRight: 8, color: '#e65100', fontWeight: 'bold' }}>
+                                                                            {row.grades[spec.id] !== undefined && row.grades[spec.id] !== null ? `+${parseFloat(row.grades[spec.id]).toFixed(2)}` : '-'}
+                                                                        </Typography>
+                                                                        <Tooltip title="Ver Tareas Extra">
+                                                                            <IconButton
+                                                                                component={Link}
+                                                                                to={`/extras/task-grading?sub_criterion_id=${spec.id}`}
+                                                                                size="small"
+                                                                                style={{ color: '#e65100' }}
+                                                                            >
+                                                                                <IconEye size="1.2rem" />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </div>
+                                                                ) : (
+                                                                    <TextField
+                                                                        type="number"
+                                                                        value={row.grades[spec.id] || ''}
+                                                                        onChange={(e) => {
+                                                                            let val = e.target.value;
+                                                                            if (val !== '') {
+                                                                                const numVal = parseFloat(val);
+                                                                                if (numVal > spec.percentage) return; // Strict enforcement
+                                                                                if (numVal < 0) return;
+                                                                            }
+                                                                            handleScoreChange(row.enrollment_id, spec.id, val);
+                                                                        }}
+                                                                        variant="outlined"
+                                                                        size="small"
+                                                                        style={{ width: 80 }}
+                                                                        inputProps={{ min: 0, max: spec.percentage, step: "0.01", style: { textAlign: 'center', color: '#e65100' } }}
+                                                                    />
+                                                                )}
+                                                            </TableCell>
+                                                        );
+                                                    })}
+                                                    {/* Criterion Grade Column */}
+                                                    {showCriterionGrades && (
+                                                        <TableCell align="center" style={{ backgroundColor: bgColor, fontWeight: 'bold', borderRight: '2px solid #aaa', borderLeft: 'none' }}>
+                                                            <Typography variant="body2" style={{ fontWeight: 'bold', color: '#1565c0' }}>
+                                                                {criterionGrade}
+                                                            </Typography>
+                                                        </TableCell>
+                                                    )}
+                                                    {/* Store criterionGradeNumeric for final grade calculation */}
+                                                    {(() => {
+                                                        if (!row._criterionGrades) row._criterionGrades = {};
+                                                        row._criterionGrades[group.id] = { grade: criterionGradeNumeric, weight: parseFloat(group.weight) };
+                                                        return null;
+                                                    })()}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                        {showFinalGrade && (
+                                            <TableCell align="center" style={{ backgroundColor: '#c8e6c9', fontWeight: 'bold', borderLeft: '3px solid #4caf50', color: '#2e7d32' }}>
+                                                {(() => {
+                                                    // Calculate final grade as direct sum of criterion grades (already weighted)
+                                                    let finalGradeNumeric = 0;
+                                                    if (row._criterionGrades) {
+                                                        Object.values(row._criterionGrades).forEach(({ grade }) => {
+                                                            if (grade !== null) {
+                                                                finalGradeNumeric += grade;
+                                                            }
+                                                        });
+                                                    }
+                                                    const finalGrade = finalGradeNumeric > 0 ? finalGradeNumeric.toFixed(2) : '-';
+                                                    return finalGrade;
+                                                })()}
+                                            </TableCell>
+                                        )}
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table >
+                </TableContainer >
+            </CardContent >
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <MuiAlert elevation={6} variant="filled" onClose={handleCloseSnackbar} severity={snackbar.severity}>
+                    {snackbar.message}
+                </MuiAlert>
+            </Snackbar>
+
+            <ManageProjectDialog
+                open={manageDialogOpen}
+                onClose={() => setManageDialogOpen(false)}
+                project={currentProject}
+                enrollments={rows.map(r => ({
+                    id: r.enrollment_id,
+                    student_details: {
+                        first_name: r.nombre,
+                        paternal_surname: r.paterno,
+                        maternal_surname: r.materno
+                    }
+                }))}
+                unavailableStudentIds={currentProject ? getUnavailableStudentIds(currentProject.sub_criterion, currentProject.id) : []}
+                onSave={handleSaveProject}
+            />
+
+            <GradeSettingsDialog
+                open={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                structure={structure}
+                onRefresh={fetchGradesheet}
+                showCriterionGrades={showCriterionGrades}
+                setShowCriterionGrades={setShowCriterionGrades}
+                showFinalGrade={showFinalGrade}
+                setShowFinalGrade={setShowFinalGrade}
+            />
+        </MainCard >
+    );
+};
+
+export default Grades;
