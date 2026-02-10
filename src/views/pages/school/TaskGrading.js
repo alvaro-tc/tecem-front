@@ -55,6 +55,7 @@ const TaskGrading = () => {
 
     // UI State
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [openUndoDialog, setOpenUndoDialog] = useState(false);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -360,6 +361,17 @@ const TaskGrading = () => {
 
     const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
+    const handleUndo = () => {
+        if (Object.keys(changes).length === 0) return;
+        setOpenUndoDialog(true);
+    };
+
+    const handleConfirmUndo = () => {
+        setChanges({});
+        setOpenUndoDialog(false);
+        fetchTaskSheet();
+    };
+
     if (!activeCourse) {
         return (
             <MainCard title="Calificación de Tareas">
@@ -395,6 +407,16 @@ const TaskGrading = () => {
                     </FormControl>
                 </Grid>
                 <Grid item>
+                    {Object.keys(changes).length > 0 && (
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={handleUndo}
+                            style={{ marginRight: 8 }}
+                        >
+                            Deshacer Cambios
+                        </Button>
+                    )}
                     <Button
                         variant="contained"
                         color="secondary"
@@ -688,6 +710,26 @@ const TaskGrading = () => {
                 onClose={() => setDialogOpen(false)}
                 onSave={handleAddTask}
             />
+
+            <Dialog
+                open={openUndoDialog}
+                onClose={() => setOpenUndoDialog(false)}
+            >
+                <DialogTitle>Deshacer Cambios</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        ¿Está seguro de deshacer los cambios no guardados? Se revertirán a los valores originales.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenUndoDialog(false)} color="primary">
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleConfirmUndo} color="error" autoFocus>
+                        Deshacer
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Snackbar
                 open={snackbar.open}

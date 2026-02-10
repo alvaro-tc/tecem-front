@@ -100,7 +100,7 @@ const CriteriaList = () => {
     );
 
     return (
-        <MainCard title="Criterios de Evaluación" content={false}>
+        <MainCard title="Etapas de Evaluación" content={false}>
             <CardContent>
                 <Grid container justifyContent="space-between" alignItems="center" spacing={2}>
                     <Grid item>
@@ -119,7 +119,7 @@ const CriteriaList = () => {
                     </Grid>
                     <Grid item>
                         <Button variant="contained" color="secondary" startIcon={<IconPlus />} onClick={handleAdd}>
-                            Añadir Criterio
+                            Añadir Etapa
                         </Button>
                     </Grid>
                 </Grid>
@@ -184,10 +184,10 @@ const CriteriaList = () => {
                 fullWidth
                 maxWidth="xs"
             >
-                <DialogTitle>Eliminar Criterio</DialogTitle>
+                <DialogTitle>Eliminar Etapa</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
-                        ¿Está seguro que desea eliminar este criterio? Esta acción no se puede deshacer.
+                        ¿Está seguro que desea eliminar esta etapa? Esta acción no se puede deshacer.
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>

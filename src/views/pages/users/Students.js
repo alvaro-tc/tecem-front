@@ -318,6 +318,7 @@ const Students = () => {
                                     <TableCell>Paterno</TableCell>
                                     <TableCell>Materno</TableCell>
                                     <TableCell>Nombres</TableCell>
+                                    <TableCell>Email</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -327,6 +328,7 @@ const Students = () => {
                                         <TableCell>{s.paternal_surname}</TableCell>
                                         <TableCell>{s.maternal_surname}</TableCell>
                                         <TableCell>{s.first_name}</TableCell>
+                                        <TableCell>{s.email}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

@@ -25,6 +25,14 @@ export const portal = {
             url: '/extras/social-media',
             icon: icons.IconShare,
             breadcrumbs: false
+        },
+        {
+            id: 'landing-config',
+            title: 'Página Principal',
+            type: 'item',
+            url: '/extras/landing-config',
+            icon: icons.IconFileText,
+            breadcrumbs: false
         }
     ]
 };

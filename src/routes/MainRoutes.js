@@ -34,6 +34,7 @@ const StudentCourseRegistration = Loadable(lazy(() => import('../views/pages/sch
 // extras routing
 const Publications = Loadable(lazy(() => import('../views/pages/extras/Publications')));
 const SocialMediaConfig = Loadable(lazy(() => import('../views/pages/extras/SocialMediaConfig')));
+const LandingPageConfig = Loadable(lazy(() => import('../views/pages/extras/LandingPageConfig')));
 
 
 // user management routing
@@ -76,6 +77,7 @@ const MainRoutes = () => {
                 '/extras/projects',
                 '/extras/publications',
                 '/extras/social-media',
+                '/extras/landing-config',
                 '/users/students',
                 '/users/teachers',
                 '/account-settings',
@@ -105,6 +107,7 @@ const MainRoutes = () => {
                         <Route path="/extras/projects" component={Projects} />
                         <Route path="/extras/publications" component={Publications} />
                         <Route path="/extras/social-media" component={SocialMediaConfig} />
+                        <Route path="/extras/landing-config" component={LandingPageConfig} />
 
                         <Route path="/users/students" component={UsersStudents} />
                         <Route path="/users/teachers" component={UsersTeachers} />

@@ -15,14 +15,6 @@ export const school = {
     type: 'group',
     children: [
         {
-            id: 'enrollments',
-            title: 'Inscripciones',
-            type: 'item',
-            url: '/school/enrollments',
-            icon: icons.IconUserPlus,
-            breadcrumbs: false
-        },
-        {
             id: 'grades',
             title: 'Llenado de Notas',
             type: 'item',
@@ -47,19 +39,19 @@ export const school = {
             breadcrumbs: false
         },
         {
-            id: 'criteria',
-            title: 'Etapas',
-            type: 'item',
-            url: '/school/criteria',
-            icon: icons.IconList,
-            breadcrumbs: false
-        },
-        {
             id: 'weightings',
             title: 'Ponderaciones',
             type: 'item',
             url: '/school/weightings',
             icon: icons.IconScale,
+            breadcrumbs: false
+        },
+        {
+            id: 'enrollments',
+            title: 'Inscripciones',
+            type: 'item',
+            url: '/school/enrollments',
+            icon: icons.IconUserPlus,
             breadcrumbs: false
         }
     ]

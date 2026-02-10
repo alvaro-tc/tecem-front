@@ -12,6 +12,7 @@ import TotalIncomeDarkCard from './TotalIncomeDarkCard';
 import TotalIncomeLightCard from './TotalIncomeLightCard';
 import TotalGrowthBarChart from './TotalGrowthBarChart';
 import StudentDashboard from '../Student'; // Import Student Dashboard
+import TeacherDashboard from '../Teacher/index'; // Import Teacher Dashboard explicitly
 import { gridSpacing } from './../../../store/constant';
 import configData from '../../../config';
 import axios from 'axios';
@@ -65,6 +66,11 @@ const Dashboard = () => {
     // Render Student Dashboard
     if (account.user && account.user.role === 'STUDENT') {
         return <StudentDashboard />;
+    }
+
+    // Render Teacher Dashboard
+    if (account.user && account.user.role === 'TEACHER') {
+        return <TeacherDashboard />;
     }
 
     const getIcon = (role, index) => {

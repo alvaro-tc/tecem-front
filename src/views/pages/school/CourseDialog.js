@@ -334,48 +334,6 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                                         </Grid>
 
                                         <Grid item xs={12}>
-                                            <TextField
-                                                fullWidth
-                                                label="Link WhatsApp (Opcional)"
-                                                name="whatsapp_link"
-                                                value={values.whatsapp_link || ''}
-                                                onBlur={handleBlur}
-                                                onChange={handleChange}
-                                                error={Boolean(touched.whatsapp_link && errors.whatsapp_link)}
-                                                helperText={touched.whatsapp_link && errors.whatsapp_link}
-                                            />
-                                        </Grid>
-
-                                        <Grid item xs={12}>
-                                            <input
-                                                accept="image/*"
-                                                style={{ display: 'none' }}
-                                                id="raised-button-file"
-                                                type="file"
-                                                onChange={(event) => {
-                                                    const file = event.currentTarget.files[0];
-                                                    if (file) {
-                                                        setFieldValue("image", file);
-                                                    }
-                                                }}
-                                            />
-                                            <label htmlFor="raised-button-file">
-                                                <Button variant="outlined" component="span" fullWidth>
-                                                    {values.image ? (values.image.name || 'Imagen Seleccionada (Click para cambiar)') : 'Subir Imagen del Curso'}
-                                                </Button>
-                                            </label>
-                                            {values.image && (
-                                                <div style={{ marginTop: 10, textAlign: 'center' }}>
-                                                    <img
-                                                        src={typeof values.image === 'string' ? values.image : URL.createObjectURL(values.image)}
-                                                        alt="Preview"
-                                                        style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </Grid>
-
-                                        <Grid item xs={12}>
                                             <DialogTitle style={{ paddingLeft: 0 }}>Configuración de Inscripción</DialogTitle>
                                         </Grid>
                                         <Grid item xs={12}>
@@ -421,6 +379,48 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                                                 </Grid>
                                             </>
                                         )}
+
+                                        <Grid item xs={12}>
+                                            <TextField
+                                                fullWidth
+                                                label="Link WhatsApp (Opcional)"
+                                                name="whatsapp_link"
+                                                value={values.whatsapp_link || ''}
+                                                onBlur={handleBlur}
+                                                onChange={handleChange}
+                                                error={Boolean(touched.whatsapp_link && errors.whatsapp_link)}
+                                                helperText={touched.whatsapp_link && errors.whatsapp_link}
+                                            />
+                                        </Grid>
+
+                                        <Grid item xs={12}>
+                                            <input
+                                                accept="image/*"
+                                                style={{ display: 'none' }}
+                                                id="raised-button-file"
+                                                type="file"
+                                                onChange={(event) => {
+                                                    const file = event.currentTarget.files[0];
+                                                    if (file) {
+                                                        setFieldValue("image", file);
+                                                    }
+                                                }}
+                                            />
+                                            <label htmlFor="raised-button-file">
+                                                <Button variant="outlined" component="span" fullWidth>
+                                                    {values.image ? (values.image.name || 'Imagen Seleccionada (Click para cambiar)') : 'Subir Imagen del Curso'}
+                                                </Button>
+                                            </label>
+                                            {values.image && (
+                                                <div style={{ marginTop: 10, textAlign: 'center' }}>
+                                                    <img
+                                                        src={typeof values.image === 'string' ? values.image : URL.createObjectURL(values.image)}
+                                                        alt="Preview"
+                                                        style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </Grid>
 
                                     </Grid>
                                 </DialogContent>

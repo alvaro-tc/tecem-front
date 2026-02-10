@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 
 import InfoModal from './InfoModal';
 import GradesModal from './GradesModal';
-import { getScheduleItems } from '../../../utils/scheduleUtils';
+import * as ScheduleUtils from '../../../utils/scheduleUtils';
 
 const useStyles = makeStyles((theme) => ({
     card: {
@@ -121,8 +121,8 @@ const StudentDashboard = () => {
                                 </Typography>
                                 <Typography className={classes.courseInfo} component="div">
                                     <strong>Horario:</strong>
-                                    {getScheduleItems(course.schedule).length > 0 ? (
-                                        getScheduleItems(course.schedule).map((item, idx) => (
+                                    {ScheduleUtils.getScheduleItems(course.schedule).length > 0 ? (
+                                        ScheduleUtils.getScheduleItems(course.schedule).map((item, idx) => (
                                             <div key={idx}>{item}</div>
                                         ))
                                     ) : <span style={{ marginLeft: 4 }}>Por definir</span>}

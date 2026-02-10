@@ -21,6 +21,7 @@ const LandingPage = () => {
     const theme = useTheme();
     const [courses, setCourses] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
+    const [landingConfig, setLandingConfig] = React.useState(null);
 
     // Registration modal state
     const [openModal, setOpenModal] = React.useState(false);
@@ -47,7 +48,18 @@ const LandingPage = () => {
                 setLoading(false);
             }
         };
+
+        const fetchLandingConfig = async () => {
+            try {
+                const response = await axios.get(`${configData.API_SERVER}landing-page-config/`);
+                setLandingConfig(response.data);
+            } catch (error) {
+                console.error("Failed to fetch landing config", error);
+            }
+        };
+
         fetchCourses();
+        fetchLandingConfig();
     }, []);
 
     const getImageUrl = (imagePath) => {
@@ -198,7 +210,11 @@ const LandingPage = () => {
                                     }
                                 }}
                             >
-                                <img src={dashboardPreview} alt="Panel Administrativo" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                                <img
+                                    src={landingConfig?.landing_image ? getImageUrl(landingConfig.landing_image) : dashboardPreview}
+                                    alt="Panel Administrativo"
+                                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                                />
                             </Box>
                         </Grid>
                     </Grid>

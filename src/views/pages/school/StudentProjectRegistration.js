@@ -244,109 +244,148 @@ const StudentProjectRegistration = () => {
                                 Estás registrando un grupo para: <strong>{selectedProject?.name}</strong> <br />
                                 Materia: <strong>{selectedProject?.course_details?.subject_details?.name || selectedProject?.course_name}</strong> (Paralelo {selectedProject?.course_details?.parallel})
                             </Alert>
-                            <Typography variant="h4" gutterBottom color="primary">1. Datos del Grupo</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Nombre del Grupo"
-                                value={projectName}
-                                onChange={(e) => setProjectName(e.target.value)}
-                                variant="outlined"
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Descripción (Opcional)"
-                                value={projectDesc}
-                                onChange={(e) => setProjectDesc(e.target.value)}
-                                variant="outlined"
-                            />
                         </Grid>
 
-                        <Grid item xs={12}>
-                            <Typography variant="h4" gutterBottom style={{ marginTop: 16 }} color="primary">2. Líder del Grupo</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="CI del Líder (Carnet de Identidad)"
-                                value={leaderCi}
-                                onChange={(e) => {
-                                    setLeaderCi(e.target.value);
-                                    setIsValidLeader(false);
-                                    setLeaderName('');
-                                }}
-                                onBlur={handleBlurLeader}
-                                variant="outlined"
-                                helperText={leaderName ? `Nombre: ${leaderName}` : "Debe estar inscrito en la materia"}
-                                required
-                                error={!isValidLeader && leaderCi !== '' && !leaderName}
-                            />
+                        {/* LEFT COLUMN: Form Inputs */}
+                        <Grid item xs={12} md={8}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12}>
+                                    <Typography variant="h4" gutterBottom color="primary">1. Datos del Grupo</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Nombre del Grupo"
+                                        value={projectName}
+                                        onChange={(e) => setProjectName(e.target.value)}
+                                        variant="outlined"
+                                        required
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Descripción (Opcional)"
+                                        value={projectDesc}
+                                        onChange={(e) => setProjectDesc(e.target.value)}
+                                        variant="outlined"
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Typography variant="h4" gutterBottom style={{ marginTop: 16 }} color="primary">2. Líder del Grupo</Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField
+                                        fullWidth
+                                        label="CI del Líder (Carnet de Identidad)"
+                                        value={leaderCi}
+                                        onChange={(e) => {
+                                            setLeaderCi(e.target.value);
+                                            setIsValidLeader(false);
+                                            setLeaderName('');
+                                        }}
+                                        onBlur={handleBlurLeader}
+                                        variant="outlined"
+                                        helperText={leaderName ? `Nombre: ${leaderName}` : "Debe estar inscrito en la materia"}
+                                        required
+                                        error={!isValidLeader && leaderCi !== '' && !leaderName}
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Typography variant="h4" gutterBottom style={{ marginTop: 16 }} color="primary">3. Integrantes</Typography>
+                                    <Typography variant="body2" color="textSecondary" gutterBottom>
+                                        Agregue el CI de los demás miembros. El sistema verificará su inscripción al agregar.
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField
+                                        fullWidth
+                                        label="CI del Integrante"
+                                        value={memberCiInput}
+                                        onChange={(e) => setMemberCiInput(e.target.value)}
+                                        variant="outlined"
+                                        InputProps={{
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton onClick={handleAddMember} edge="end" color="primary">
+                                                        <IconUserPlus />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            )
+                                        }}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleAddMember()}
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
+                                        <Button onClick={handleBack}>Atrás</Button>
+                                        <Button
+                                            variant="contained"
+                                            color="secondary"
+                                            onClick={handleSubmit}
+                                            disabled={!projectName || !leaderCi || !isValidLeader || loading}
+                                        >
+                                            {loading ? <CircularProgress size={24} /> : 'Registrar Grupo'}
+                                        </Button>
+                                    </div>
+                                </Grid>
+                            </Grid>
                         </Grid>
 
-                        <Grid item xs={12}>
-                            <Typography variant="h4" gutterBottom style={{ marginTop: 16 }} color="primary">3. Integrantes</Typography>
-                            <Typography variant="body2" color="textSecondary" gutterBottom>
-                                Agregue el CI de los demás miembros. El sistema verificará su inscripción al agregar.
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="CI del Integrante"
-                                value={memberCiInput}
-                                onChange={(e) => setMemberCiInput(e.target.value)}
-                                variant="outlined"
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton onClick={handleAddMember} edge="end" color="primary">
-                                                <IconUserPlus />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    )
-                                }}
-                                onKeyPress={(e) => e.key === 'Enter' && handleAddMember()}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <List dense>
-                                {leaderName && (
-                                    <ListItem>
-                                        <ListItemText primary={`Líder: ${leaderName}`} secondary={`CI: ${leaderCi} (Usted)`} />
-                                        <ListItemSecondaryAction>
-                                            <Chip size="small" label="Líder" color="primary" />
-                                        </ListItemSecondaryAction>
-                                    </ListItem>
-                                )}
-                                {members.map((mem, index) => (
-                                    <ListItem key={index}>
-                                        <ListItemText primary={`Integrante: ${mem.name}`} secondary={`CI: ${mem.ci}`} />
-                                        <ListItemSecondaryAction>
-                                            <IconButton edge="end" size="small" onClick={() => handleRemoveMember(mem.ci)}>
-                                                <IconTrash size="1rem" />
-                                            </IconButton>
-                                        </ListItemSecondaryAction>
-                                    </ListItem>
-                                ))}
-                            </List>
-                        </Grid>
+                        {/* RIGHT COLUMN: Selected Members List */}
+                        <Grid item xs={12} md={4}>
+                            <Paper variant="outlined" style={{ padding: 16, height: '100%', backgroundColor: '#fafafa' }}>
+                                <Typography variant="h4" gutterBottom color="primary" align="center">
+                                    Integrantes Seleccionados
+                                </Typography>
+                                <Divider style={{ margin: '8px 0 16px 0' }} />
 
-                        <Grid item xs={12}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
-                                <Button onClick={handleBack}>Atrás</Button>
-                                <Button
-                                    variant="contained"
-                                    color="secondary"
-                                    onClick={handleSubmit}
-                                    disabled={!projectName || !leaderCi || !isValidLeader || loading}
-                                >
-                                    {loading ? <CircularProgress size={24} /> : 'Registrar Grupo'}
-                                </Button>
-                            </div>
+                                <List dense>
+                                    {leaderName ? (
+                                        <ListItem>
+                                            <ListItemText
+                                                primary={<Typography variant="subtitle1" style={{ fontWeight: 600 }}>{leaderName}</Typography>}
+                                                secondary={`CI: ${leaderCi}`}
+                                            />
+                                            <ListItemSecondaryAction>
+                                                <Chip size="small" label="Líder" color="primary" />
+                                            </ListItemSecondaryAction>
+                                        </ListItem>
+                                    ) : (
+                                        <ListItem>
+                                            <ListItemText secondary="Ingrese CI del líder a la izquierda..." />
+                                        </ListItem>
+                                    )}
+
+                                    <Divider component="li" style={{ margin: '8px 0' }} />
+
+                                    {members.length === 0 && (
+                                        <Typography variant="body2" color="textSecondary" align="center" style={{ padding: 16 }}>
+                                            No se han añadido integrantes adicionales.
+                                        </Typography>
+                                    )}
+
+                                    {members.map((mem, index) => (
+                                        <React.Fragment key={index}>
+                                            <ListItem>
+                                                <ListItemText
+                                                    primary={mem.name}
+                                                    secondary={`CI: ${mem.ci}`}
+                                                />
+                                                <ListItemSecondaryAction>
+                                                    <IconButton edge="end" size="small" onClick={() => handleRemoveMember(mem.ci)}>
+                                                        <IconTrash size="1.2rem" stroke={1.5} color={theme.palette.error.main} />
+                                                    </IconButton>
+                                                </ListItemSecondaryAction>
+                                            </ListItem>
+                                            <Divider component="li" style={{ margin: '4px 0' }} />
+                                        </React.Fragment>
+                                    ))}
+                                </List>
+                            </Paper>
                         </Grid>
                     </Grid>
                 );

@@ -42,7 +42,7 @@ const CriteriaDialog = ({ open, handleClose, template, onSave }) => {
         <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
             {open && (
                 <>
-                    <DialogTitle>{template ? 'Editar Plantilla de Criterios' : 'Nueva Plantilla de Criterios'}</DialogTitle>
+                    <DialogTitle>{template ? 'Editar Plantilla de Etapas' : 'Nueva Plantilla de Etapas'}</DialogTitle>
                     <Formik
                         initialValues={{
                             name: template ? template.name : '',
@@ -53,7 +53,7 @@ const CriteriaDialog = ({ open, handleClose, template, onSave }) => {
                             name: Yup.string().max(255).required('El nombre es requerido'),
                             criteria: Yup.array().of(
                                 Yup.object().shape({
-                                    name: Yup.string().required('Nombre del criterio requerido'),
+                                    name: Yup.string().required('Nombre de la etapa requerido'),
                                     weight: Yup.number().required('Peso requerido')
                                 })
                             )
@@ -90,7 +90,7 @@ const CriteriaDialog = ({ open, handleClose, template, onSave }) => {
                                             />
                                         </Grid>
                                         <Grid item xs={12}>
-                                            <Typography variant="h4" gutterBottom>Criterios</Typography>
+                                            <Typography variant="h4" gutterBottom>Etapas</Typography>
                                             <FieldArray name="criteria">
                                                 {({ insert, remove, push }) => (
                                                     <div>
@@ -99,7 +99,7 @@ const CriteriaDialog = ({ open, handleClose, template, onSave }) => {
                                                                 <Grid item xs={8}>
                                                                     <TextField
                                                                         fullWidth
-                                                                        label="Nombre del Criterio"
+                                                                        label="Nombre de la Etapa"
                                                                         name={`criteria.${index}.name`}
                                                                         value={criterion.name}
                                                                         onChange={handleChange}
@@ -137,7 +137,7 @@ const CriteriaDialog = ({ open, handleClose, template, onSave }) => {
                                                             onClick={() => push({ name: '', weight: '' })}
                                                             startIcon={<IconPlus />}
                                                         >
-                                                            Añadir Criterio
+                                                            Añadir Etapa
                                                         </Button>
                                                     </div>
                                                 )}

@@ -1,4 +1,4 @@
-import { IconHistory, IconCertificate, IconBook, IconLayoutGrid, IconBriefcase, IconUserCheck } from '@tabler/icons';
+import { IconHistory, IconCertificate, IconBook, IconLayoutGrid, IconBriefcase, IconUserCheck, IconList } from '@tabler/icons';
 
 const icons = {
     IconHistory,
@@ -6,7 +6,8 @@ const icons = {
     IconBook,
     IconLayoutGrid,
     IconBriefcase,
-    IconUserCheck
+    IconUserCheck,
+    IconList
 };
 
 export const administration = {
@@ -60,6 +61,14 @@ export const administration = {
             type: 'item',
             url: '/users/students',
             icon: icons.IconUserCheck,
+            breadcrumbs: false
+        },
+        {
+            id: 'criteria',
+            title: 'Etapas',
+            type: 'item',
+            url: '/school/criteria',
+            icon: icons.IconList,
             breadcrumbs: false
         }
     ]

@@ -98,6 +98,8 @@ const RestLogin = (props, { ...others }) => {
     const [updateError, setUpdateError] = React.useState('');
     const [updating, setUpdating] = React.useState(false);
 
+    const [existingEmail, setExistingEmail] = React.useState(null);
+
     const handleClickShowPassword = () => {
         setShowPassword(!showPassword);
     };
@@ -182,6 +184,11 @@ const RestLogin = (props, { ...others }) => {
                                 if (response.data.success) {
                                     if (response.data.requires_account_update) {
                                         setTempToken(response.data.token);
+                                        const userEmail = response.data.user?.email;
+                                        if (userEmail) {
+                                            setExistingEmail(userEmail);
+                                            setUpdateData(prev => ({ ...prev, email: userEmail }));
+                                        }
                                         setForceUpdateOpen(true);
                                         setSubmitting(false); // Stop loading on main form
                                     } else {
@@ -337,7 +344,10 @@ const RestLogin = (props, { ...others }) => {
                 <DialogTitle>Actualización de Credenciales Requerida</DialogTitle>
                 <DialogContent>
                     <DialogContentText sx={{ mb: 2 }}>
-                        Por seguridad, debes configurar un correo electrónico y una nueva contraseña personal para tu cuenta.
+                        {existingEmail
+                            ? "Por seguridad, debes configurar una nueva contraseña personal para tu cuenta."
+                            : "Por seguridad, debes configurar un correo electrónico y una nueva contraseña personal para tu cuenta."
+                        }
                     </DialogContentText>
 
                     {updateError && (
@@ -346,19 +356,21 @@ const RestLogin = (props, { ...others }) => {
                         </Box>
                     )}
 
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        id="new-email"
-                        label="Correo Electrónico"
-                        type="email"
-                        fullWidth
-                        variant="outlined"
-                        name="email"
-                        value={updateData.email}
-                        onChange={handleUpdateChange}
-                        sx={{ mb: 2 }}
-                    />
+                    {!existingEmail && (
+                        <TextField
+                            autoFocus
+                            margin="dense"
+                            id="new-email"
+                            label="Correo Electrónico"
+                            type="email"
+                            fullWidth
+                            variant="outlined"
+                            name="email"
+                            value={updateData.email}
+                            onChange={handleUpdateChange}
+                            sx={{ mb: 2 }}
+                        />
+                    )}
                     <TextField
                         margin="dense"
                         id="new-password"

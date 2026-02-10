@@ -53,6 +53,12 @@ const Grades = () => {
     const [currentProject, setCurrentProject] = useState(null);
     const [showCriterionGrades, setShowCriterionGrades] = useState(true);
     const [showFinalGrade, setShowFinalGrade] = useState(true);
+    const [visibleColumns, setVisibleColumns] = useState({
+        ci: true,
+        paterno: true,
+        materno: true,
+        nombre: true
+    });
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
     // ... (existing useEffect, loadProjects, etc.)
@@ -426,6 +432,10 @@ const Grades = () => {
     //    group.sub_criteria.filter(sub => sub.visible)
     // );
 
+    // Sticky configuration
+    const paternoLeft = 0;
+    const maternoLeft = 140; // width of paterno
+
     return (
         <MainCard title={`Calificaciones - ${activeCourse.subject_details?.name || ''} (${activeCourse.parallel || ''})`}>
             <Dialog open={loading} onClose={() => { }}>
@@ -502,10 +512,10 @@ const Grades = () => {
                         <TableHead>
                             {/* Group Header Row */}
                             <TableRow>
-                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>CI</TableCell>
-                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>Paterno</TableCell>
-                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>Materno</TableCell>
-                                <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10 }}>Nombres</TableCell>
+                                {visibleColumns.ci && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10, minWidth: 80 }}>CI</TableCell>}
+                                {visibleColumns.paterno && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 11, position: 'sticky', left: paternoLeft, minWidth: 140 }}>Paterno</TableCell>}
+                                {visibleColumns.materno && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 11, position: 'sticky', left: visibleColumns.paterno ? maternoLeft : 0, minWidth: 140 }}>Materno</TableCell>}
+                                {visibleColumns.nombre && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10, minWidth: 140 }}>Nombres</TableCell>}
                                 {structure.map((group, index) => {
                                     const visibleSubCount = group.sub_criteria.filter(s => s.visible).length;
                                     const visibleSpecialCount = (group.special_criteria || []).filter(s => s.visible).length;
@@ -599,10 +609,10 @@ const Grades = () => {
                             ) : (
                                 filteredRows.map(row => (
                                     <TableRow key={row.enrollment_id} hover>
-                                        <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: 0, zIndex: 5 }}>{row.ci}</TableCell>
-                                        <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: 80, zIndex: 5 }}>{row.paterno}</TableCell>
-                                        <TableCell style={{ backgroundColor: '#fff' }}>{row.materno}</TableCell>
-                                        <TableCell style={{ backgroundColor: '#fff', borderRight: '2px solid #ddd' }}>{row.nombre}</TableCell>
+                                        {visibleColumns.ci && <TableCell style={{ backgroundColor: '#fff', zIndex: 5 }}>{row.ci}</TableCell>}
+                                        {visibleColumns.paterno && <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: paternoLeft, zIndex: 6, fontWeight: 'bold' }}>{row.paterno}</TableCell>}
+                                        {visibleColumns.materno && <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: visibleColumns.paterno ? maternoLeft : 0, zIndex: 6, fontWeight: 'bold' }}>{row.materno}</TableCell>}
+                                        {visibleColumns.nombre && <TableCell style={{ backgroundColor: '#fff', borderRight: '2px solid #ddd' }}>{row.nombre}</TableCell>}
                                         {structure.map((group, groupIndex) => {
                                             const visibleSubs = group.sub_criteria.filter(sub => sub.visible);
                                             const visibleSpecials = (group.special_criteria || []).filter(spec => spec.visible);
@@ -847,6 +857,8 @@ const Grades = () => {
                 setShowCriterionGrades={setShowCriterionGrades}
                 showFinalGrade={showFinalGrade}
                 setShowFinalGrade={setShowFinalGrade}
+                visibleColumns={visibleColumns}
+                setVisibleColumns={setVisibleColumns}
             />
         </MainCard >
     );

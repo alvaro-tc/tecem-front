@@ -54,7 +54,7 @@ const UserDialog = ({ open, handleClose, user, role, onSave }) => {
                             password: ''
                         }}
                         validationSchema={Yup.object().shape({
-                            email: Yup.string().email('Debe ser un email válido').max(255).required('El email es requerido'),
+                            email: Yup.string().email('Debe ser un email válido').max(255).nullable(),
                             first_name: Yup.string().max(255).required('El nombre es requerido'),
                             paternal_surname: Yup.string().max(255).required('El apellido paterno es requerido'),
                             maternal_surname: Yup.string().max(255),
@@ -69,16 +69,16 @@ const UserDialog = ({ open, handleClose, user, role, onSave }) => {
                                 <DialogContent>
                                     <Grid container spacing={2}>
 
-                                        <Grid item xs={12}>
+                                        <Grid item xs={6}>
                                             <TextField
                                                 fullWidth
-                                                label="Email"
-                                                name="email"
-                                                value={values.email}
+                                                label="Carnet de Identidad"
+                                                name="ci_number"
+                                                value={values.ci_number || ''}
                                                 onBlur={handleBlur}
                                                 onChange={handleChange}
-                                                error={Boolean(touched.email && errors.email)}
-                                                helperText={touched.email && errors.email}
+                                                error={Boolean(touched.ci_number && errors.ci_number)}
+                                                helperText={touched.ci_number && errors.ci_number}
                                             />
                                         </Grid>
                                         <Grid item xs={6}>
@@ -91,18 +91,6 @@ const UserDialog = ({ open, handleClose, user, role, onSave }) => {
                                                 onChange={handleChange}
                                                 error={Boolean(touched.first_name && errors.first_name)}
                                                 helperText={touched.first_name && errors.first_name}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <TextField
-                                                fullWidth
-                                                label="Carnet de Identidad"
-                                                name="ci_number"
-                                                value={values.ci_number || ''}
-                                                onBlur={handleBlur}
-                                                onChange={handleChange}
-                                                error={Boolean(touched.ci_number && errors.ci_number)}
-                                                helperText={touched.ci_number && errors.ci_number}
                                             />
                                         </Grid>
                                         <Grid item xs={6}>
@@ -127,6 +115,18 @@ const UserDialog = ({ open, handleClose, user, role, onSave }) => {
                                                 onChange={handleChange}
                                                 error={Boolean(touched.maternal_surname && errors.maternal_surname)}
                                                 helperText={touched.maternal_surname && errors.maternal_surname}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <TextField
+                                                fullWidth
+                                                label="Email"
+                                                name="email"
+                                                value={values.email}
+                                                onBlur={handleBlur}
+                                                onChange={handleChange}
+                                                error={Boolean(touched.email && errors.email)}
+                                                helperText={touched.email && errors.email}
                                             />
                                         </Grid>
                                         <Grid item xs={12}>

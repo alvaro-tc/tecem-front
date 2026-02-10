@@ -114,16 +114,29 @@ const Enrollments = () => {
             });
     };
 
+    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [enrollmentToDelete, setEnrollmentToDelete] = useState(null);
+
     const handleDelete = (id) => {
-        if (!window.confirm("¿Está seguro de eliminar esta inscripción?")) return;
+        setEnrollmentToDelete(id);
+        setOpenDeleteDialog(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (!enrollmentToDelete) return;
 
         axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
-        axios.delete(`${configData.API_SERVER}enrollments/${id}/`)
+        axios.delete(`${configData.API_SERVER}enrollments/${enrollmentToDelete}/`)
             .then(() => {
                 setSnackbar({ open: true, message: 'Inscripción eliminada', severity: 'success' });
                 fetchEnrollments();
+                setOpenDeleteDialog(false);
+                setEnrollmentToDelete(null);
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error(err);
+                setSnackbar({ open: true, message: 'Error al eliminar inscripción', severity: 'error' });
+            });
     };
 
     const handleFileUpload = (event) => {
@@ -150,10 +163,11 @@ const Enrollments = () => {
     };
 
     const handleConfirmEnrollment = () => {
-        // Only enroll students who are NOT already enrolled
-        const studentIds = previewData.found.filter(s => !s.is_enrolled).map(s => s.id);
+        // IDs of existing students found
+        const existingStudentIds = previewData.found.filter(s => !s.is_enrolled).map(s => s.id);
+        const studentsToCreate = previewData.to_create || [];
 
-        if (studentIds.length === 0) {
+        if (existingStudentIds.length === 0 && studentsToCreate.length === 0) {
             setSnackbar({ open: true, message: 'No hay estudiantes nuevos para inscribir', severity: 'info' });
             setPreviewOpen(false);
             return;
@@ -162,10 +176,16 @@ const Enrollments = () => {
         axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
         axios.post(`${configData.API_SERVER}enrollments/confirm_bulk_enrollment/`, {
             course_id: activeCourse.id,
-            student_ids: studentIds
+            student_ids: existingStudentIds,
+            students_to_create: studentsToCreate
         })
             .then(response => {
-                setSnackbar({ open: true, message: `Se inscribieron ${response.data.enrolled_count} estudiantes`, severity: 'success' });
+                const { enrolled_count, created_users_count } = response.data;
+                setSnackbar({
+                    open: true,
+                    message: `Proceso finalizado. Creados: ${created_users_count || 0}. Inscritos: ${enrolled_count}`,
+                    severity: 'success'
+                });
                 setPreviewOpen(false);
                 fetchEnrollments();
             })
@@ -217,7 +237,9 @@ const Enrollments = () => {
     if (!activeCourse) {
         return (
             <MainCard title="Inscripciones">
-                <Alert severity="warning">Seleccione un Paralelo en el buscador superior para gestionar inscripciones.</Alert>
+                <Typography variant="h6" align="center">
+                    Seleccione un curso para ver las inscripciones.
+                </Typography>
             </MainCard>
         );
     }
@@ -339,84 +361,93 @@ const Enrollments = () => {
                 </Table>
             </TableContainer>
 
-
             {/* PREVIEW DIALOG */}
-            <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>Vista Previa de Carga</DialogTitle>
+            <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
+                <DialogTitle>Vista Previa de Carga Masiva</DialogTitle>
                 <DialogContent>
-                    <Typography variant="h4" gutterBottom>
-                        Estudiantes Encontrados ({previewData.found ? previewData.found.length : 0})
-                    </Typography>
-                    {(previewData.found && previewData.found.length > 0) ? (
-                        <TableContainer style={{ maxHeight: 300 }}>
-                            <Table stickyHeader size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Estado</TableCell>
-                                        <TableCell>CI</TableCell>
-                                        <TableCell>Paterno</TableCell>
-                                        <TableCell>Materno</TableCell>
-                                        <TableCell>Nombre</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {previewData.found.map((s) => (
-                                        <TableRow key={s.ci_number} style={{ backgroundColor: s.is_enrolled ? '#f0f0f0' : 'inherit' }}>
-                                            <TableCell>
-                                                {s.is_enrolled ? (
-                                                    <Typography color="textSecondary" variant="caption">Inscrito</Typography>
-                                                ) : (
-                                                    <Typography color="primary" variant="caption">Nuevo</Typography>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>{s.ci_number}</TableCell>
-                                            <TableCell>{s.paternal_surname}</TableCell>
-                                            <TableCell>{s.maternal_surname}</TableCell>
-                                            <TableCell>{s.first_name}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    ) : (
-                        <Typography color="textSecondary">No se encontraron estudiantes válidos.</Typography>
-                    )}
 
-                    <Box mt={3}>
-                        <Typography variant="h4" color="error" gutterBottom>
-                            No Encontrados ({previewData.not_found ? previewData.not_found.length : 0})
+                    {/* SECTION 1: EXISTING STUDENTS FOUND */}
+                    <Box mb={4}>
+                        <Typography variant="h4" gutterBottom>
+                            Estudiantes Existentes ({previewData.found ? previewData.found.length : 0})
                         </Typography>
-                        {(previewData.not_found && previewData.not_found.length > 0) ? (
-                            <List dense style={{ maxHeight: 200, overflow: 'auto', backgroundColor: '#fff0f0' }}>
-                                {previewData.not_found.map((ci, idx) => (
-                                    <ListItem key={idx}>
-                                        <TextField
-                                            defaultValue={ci}
-                                            label="Corregir CI"
-                                            size="small"
-                                            variant="outlined"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') handleCheckSingleCI(e.target.value, idx);
-                                            }}
-                                            onBlur={(e) => {
-                                                if (e.target.value !== ci) handleCheckSingleCI(e.target.value, idx);
-                                            }}
-                                        />
-                                        <ListItemText
-                                            primary=""
-                                            secondary="No encontrado. Presione Enter para re-verificar."
-                                            style={{ marginLeft: 16 }}
-                                        />
-                                        <ListItemSecondaryAction>
-                                            <Typography variant="caption" color="error">Faltante</Typography>
-                                        </ListItemSecondaryAction>
-                                    </ListItem>
-                                ))}
-                            </List>
+                        {(previewData.found && previewData.found.length > 0) ? (
+                            <TableContainer style={{ maxHeight: 200, marginBottom: 20 }}>
+                                <Table stickyHeader size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Estado</TableCell>
+                                            <TableCell>CI</TableCell>
+                                            <TableCell>Paterno</TableCell>
+                                            <TableCell>Materno</TableCell>
+                                            <TableCell>Nombre</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {previewData.found.map((s) => (
+                                            <TableRow key={s.ci_number} style={{ backgroundColor: s.is_enrolled ? '#e0e0e0' : '#e8f5e9' }}>
+                                                <TableCell>
+                                                    {s.is_enrolled ? (
+                                                        <Typography color="textSecondary" variant="caption">Ya Inscrito</Typography>
+                                                    ) : (
+                                                        <Typography color="primary" variant="caption" style={{ fontWeight: 'bold' }}>Se Inscribirá</Typography>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>{s.ci_number}</TableCell>
+                                                <TableCell>{s.paternal_surname}</TableCell>
+                                                <TableCell>{s.maternal_surname}</TableCell>
+                                                <TableCell>{s.first_name}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
                         ) : (
-                            <Typography style={{ color: 'green' }}>Todos los CIs fueron encontrados.</Typography>
+                            <Typography color="textSecondary" variant="body2">No se encontraron estudiantes ya registrados en el sistema.</Typography>
                         )}
                     </Box>
+
+                    {/* SECTION 2: NEW STUDENTS TO CREATE */}
+                    <Box mb={4}>
+                        <Typography variant="h4" color="secondary" gutterBottom>
+                            Nuevos Estudiantes a Crear ({previewData.to_create ? previewData.to_create.length : 0})
+                        </Typography>
+                        <Typography variant="caption" display="block" gutterBottom>
+                            Estos estudiantes NO existen en el sistema. Se crearán automáticamente y luego se inscribirán.
+                        </Typography>
+
+                        {(previewData.to_create && previewData.to_create.length > 0) ? (
+                            <TableContainer style={{ maxHeight: 200 }}>
+                                <Table stickyHeader size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>CI</TableCell>
+                                            <TableCell>Paterno</TableCell>
+                                            <TableCell>Materno</TableCell>
+                                            <TableCell>Nombre</TableCell>
+                                            <TableCell>Email</TableCell>
+                                            <TableCell>Celular</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {previewData.to_create.map((s, idx) => (
+                                            <TableRow key={idx} style={{ backgroundColor: '#fff3e0' }}>
+                                                <TableCell>{s.ci_number}</TableCell>
+                                                <TableCell>{s.paternal_surname}</TableCell>
+                                                <TableCell>{s.maternal_surname}</TableCell>
+                                                <TableCell>{s.first_name}</TableCell>
+                                                <TableCell>{s.email}</TableCell>
+                                                <TableCell>{s.phone}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        ) : (
+                            <Typography color="textSecondary" variant="body2">No hay nuevos estudiantes para crear.</Typography>
+                        )}
+                    </Box>
+
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setPreviewOpen(false)} color="primary">
@@ -426,9 +457,12 @@ const Enrollments = () => {
                         onClick={handleConfirmEnrollment}
                         color="secondary"
                         variant="contained"
-                        disabled={!previewData.found || previewData.found.length === 0}
+                        disabled={
+                            (!previewData.found || previewData.found.length === 0) &&
+                            (!previewData.to_create || previewData.to_create.length === 0)
+                        }
                     >
-                        Confirmar Inscripción ({previewData.found ? previewData.found.length : 0})
+                        Confirmar y Procesar
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -442,6 +476,30 @@ const Enrollments = () => {
                     fetchPendingRequests();
                 }}
             />
+
+            {/* DELETE CONFIRMATION DIALOG */}
+            <Dialog
+                open={openDeleteDialog}
+                onClose={() => setOpenDeleteDialog(false)}
+            >
+                <DialogTitle>Confirmar Eliminación</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        ¿Está seguro que desea eliminar a este estudiante del curso?
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                        Esta acción removerá la inscripción y todas las calificaciones asociadas.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleConfirmDelete} color="secondary" variant="contained" autoFocus>
+                        Eliminar
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Snackbar
                 open={snackbar.open}

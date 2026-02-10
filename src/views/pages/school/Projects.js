@@ -375,10 +375,20 @@ const Projects = () => {
     const subjectName = activeCourse ? (activeCourse.subject_details?.name || activeCourse.subject?.name || 'Materia') : '';
     const projectSubCriteria = subCriteria.filter(sc => sc.is_project);
 
-    // Filter projects by selected sub-criterion
     const filteredProjects = selectedSubCriterion
         ? projects.filter(p => p.sub_criterion === selectedSubCriterion)
         : projects;
+
+    if (!activeCourse) {
+        return (
+            <Card>
+                <CardContent>
+                    <Typography variant="h3" gutterBottom>Proyectos</Typography>
+                    <Alert severity="warning">Seleccione un curso para gestionar los proyectos.</Alert>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <Grid container spacing={3}>

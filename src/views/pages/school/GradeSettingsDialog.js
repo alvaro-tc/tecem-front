@@ -31,7 +31,9 @@ const GradeSettingsDialog = ({
     showCriterionGrades,
     setShowCriterionGrades,
     showFinalGrade,
-    setShowFinalGrade
+    setShowFinalGrade,
+    visibleColumns,
+    setVisibleColumns
 }) => {
     const account = useSelector((state) => state.account);
     const [localStructure, setLocalStructure] = useState([]);
@@ -193,6 +195,35 @@ const GradeSettingsDialog = ({
                             }
                             label="Mostrar Nota Final"
                         />
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Typography variant="subtitle2" gutterBottom style={{ marginTop: 8 }}>Columnas del Estudiante</Typography>
+                        <Grid container>
+                            <Grid item xs={6} sm={3}>
+                                <FormControlLabel
+                                    control={<Switch size="small" checked={visibleColumns.ci} onChange={(e) => setVisibleColumns({ ...visibleColumns, ci: e.target.checked })} />}
+                                    label="CI"
+                                />
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                                <FormControlLabel
+                                    control={<Switch size="small" checked={visibleColumns.paterno} onChange={(e) => setVisibleColumns({ ...visibleColumns, paterno: e.target.checked })} />}
+                                    label="Paterno"
+                                />
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                                <FormControlLabel
+                                    control={<Switch size="small" checked={visibleColumns.materno} onChange={(e) => setVisibleColumns({ ...visibleColumns, materno: e.target.checked })} />}
+                                    label="Materno"
+                                />
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                                <FormControlLabel
+                                    control={<Switch size="small" checked={visibleColumns.nombre} onChange={(e) => setVisibleColumns({ ...visibleColumns, nombre: e.target.checked })} />}
+                                    label="Nombres"
+                                />
+                            </Grid>
+                        </Grid>
                     </Grid>
                 </Grid>
                 <Divider style={{ marginBottom: 16 }} />

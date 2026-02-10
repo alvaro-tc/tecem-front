@@ -25,6 +25,11 @@ const MenuList = () => {
         );
     }
 
+    if (userRole === 'TEACHER') {
+        const teacherItems = menuItem.items.filter(item => item.id === 'dashboard' || item.id === 'school');
+        return teacherItems.map((item) => <NavGroup key={item.id} item={item} />);
+    }
+
     const navItems = menuItem.items.map((item) => {
         switch (item.type) {
             case 'group':
