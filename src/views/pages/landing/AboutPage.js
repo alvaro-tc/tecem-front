@@ -57,7 +57,7 @@ const AboutPage = () => {
                             Acerca de EMERGENTES
                         </Typography>
                         <Typography variant="h4" color="primary" sx={{ fontWeight: 600, mb: 1 }}>
-                            Universidad Pública de El Alto
+                            Institución Académica
                         </Typography>
                         <Typography variant="h5" color="textSecondary" sx={{ fontWeight: 400, maxWidth: 700, mx: 'auto' }}>
                             Conoce nuestra misión y visión para formar profesionales del futuro
@@ -86,7 +86,7 @@ const AboutPage = () => {
                                 Nuestra Misión
                             </Typography>
                             <Typography variant="body1" sx={{ fontSize: '1.15rem', lineHeight: 1.8, opacity: 0.95 }}>
-                                EMERGENTES es una plataforma educativa innovadora de la Universidad Pública de El Alto, diseñada para ofrecer formación de vanguardia en tecnologías de información y comunicación emergentes. Nuestro objetivo es preparar a estudiantes, docentes y profesionales para liderar en un mundo tecnológico en constante evolución.
+                                EMERGENTES es una plataforma educativa innovadora, diseñada para ofrecer formación de vanguardia en tecnologías de información y comunicación emergentes. Nuestro objetivo es preparar a estudiantes, docentes y profesionales para liderar en un mundo tecnológico en constante evolución.
                             </Typography>
                         </CardContent>
                     </Card>
