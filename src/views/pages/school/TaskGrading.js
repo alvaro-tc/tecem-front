@@ -23,12 +23,19 @@ import {
     DialogContentText,
     DialogActions,
     Typography,
-    IconButton
+    IconButton,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    List,
+    ListItem,
+    Fab,
+    Menu
 } from '@material-ui/core';
 import MuiAlert from '@material-ui/core/Alert';
-import { IconPlus, IconDeviceFloppy, IconPencil, IconTrash, IconSettings, IconLock, IconLockOpen, IconEye, IconEyeOff } from '@tabler/icons';
+import { IconPlus, IconDeviceFloppy, IconPencil, IconTrash, IconSettings, IconLock, IconLockOpen, IconEye, IconEyeOff, IconChevronDown } from '@tabler/icons';
 import { useTheme } from '@material-ui/core/styles';
-import { useMediaQuery, Menu, Checkbox } from '@material-ui/core';
+import { useMediaQuery, Checkbox } from '@material-ui/core';
 import MainCard from './../../../ui-component/cards/MainCard';
 import axios from 'axios';
 import configData from '../../../config';
@@ -61,7 +68,10 @@ const TaskGrading = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [editMode, setEditMode] = useState({}); // { enrollmentId-taskId: true }
 
+    const [actionsMenuAnchor, setActionsMenuAnchor] = useState(null);
+
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [search, setSearch] = useState('');
 
     // Bulk Grading State
     const [bulkMenuAnchor, setBulkMenuAnchor] = useState(null);
@@ -115,9 +125,53 @@ const TaskGrading = () => {
     useEffect(() => {
         if (activeCourse && selectedSubCrit) {
             fetchTaskSheet();
+            // Save preference
+            axios.post(`${configData.API_SERVER}courses/${activeCourse.id}/set_preference/`, {
+                last_viewed_tab: selectedSubCrit
+            }).catch(console.error);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedSubCrit]);
+
+    // Load Preference on Mount/Course Change
+    useEffect(() => {
+        if (activeCourse && !selectedSubCrit && !location.search) {
+            axios.get(`${configData.API_SERVER}courses/${activeCourse.id}/preference/`)
+                .then(res => {
+                    const lastTab = res.data.last_viewed_tab;
+                    if (lastTab) {
+                        // Check if it's special
+                        const isSpecial = String(lastTab).startsWith('special-');
+                        setSelectedSubCrit(isSpecial ? lastTab : parseInt(lastTab));
+                    }
+                })
+                .catch(console.error);
+        }
+    }, [activeCourse]);
+
+    const saveSingleScore = (enrollmentId, taskId, score) => {
+        // Optimistic update is already done in handleGradeClick via setRows
+        // Now send to backend
+        axios.post(`${configData.API_SERVER}task-scores/bulk_save/`, {
+            updates: [{
+                enrollment_id: enrollmentId,
+                task_id: taskId,
+                score: score
+            }]
+        })
+            .then(() => {
+                // Success feedback (maybe too noisy if strictly every click, but good for confirmation)
+                // setSnackbar({ open: true, message: 'Nota guardada', severity: 'success' });
+                // Recalculate averages in UI? 
+                // The backend recalculates, but frontend 'rows' averages are computed in render
+                // row.scores is updated, so average should update automatically on next render!
+            })
+            .catch(err => {
+                console.error(err);
+                setSnackbar({ open: true, message: 'Error guardando nota', severity: 'error' });
+                // Revert? Complex.
+            });
+    };
 
     const fetchSubCriteria = () => {
         axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
@@ -318,6 +372,7 @@ const TaskGrading = () => {
     const handleGradeClick = (enrollmentId, taskId, letter) => {
         const value = LETTER_SCORES[letter];
         handleScoreChange(enrollmentId, taskId, value);
+        saveSingleScore(enrollmentId, taskId, value);
         // Turn off edit mode if it was on
         setEditMode(prev => {
             const newState = { ...prev };
@@ -380,6 +435,16 @@ const TaskGrading = () => {
         );
     }
 
+    const filteredRows = rows.filter(row => {
+        const term = search.toLowerCase();
+        return (
+            (row.paterno || '').toLowerCase().includes(term) ||
+            (row.materno || '').toLowerCase().includes(term) ||
+            (row.nombre || '').toLowerCase().includes(term) ||
+            (row.ci || '').toLowerCase().includes(term)
+        );
+    });
+
     return (
         <MainCard title={`Calificación de Tareas - ${activeCourse.subject_details?.name} (${activeCourse.parallel})`}>
             {/* Header Controls */}
@@ -406,157 +471,228 @@ const TaskGrading = () => {
                         </Select>
                     </FormControl>
                 </Grid>
-                <Grid item>
-                    {Object.keys(changes).length > 0 && (
-                        <Button
+                {selectedSubCrit && (
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
                             variant="outlined"
-                            color="error"
-                            onClick={handleUndo}
-                            style={{ marginRight: 8 }}
-                        >
-                            Deshacer Cambios
-                        </Button>
-                    )}
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        startIcon={<IconDeviceFloppy />}
-                        onClick={handleSave}
-                        disabled={Object.keys(changes).length === 0 || loading}
-                        style={{ marginRight: 8 }}
-                    >
-                        Guardar Notas
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<IconPlus />}
-                        onClick={() => setConfirmOpen(true)}
-                        disabled={!selectedSubCrit}
-
-                    >
-                        Crear Tarea
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        color="primary"
-                        startIcon={<IconSettings />}
-                        onClick={() => setDeleteDialogOpen(true)}
-                        disabled={!selectedSubCrit || tasks.length === 0}
-                        style={{ marginLeft: 8 }}
-                    >
-                        Gestionar Tareas
-                    </Button>
-                </Grid>
+                            placeholder="Buscar estudiante..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            size="small"
+                        />
+                    </Grid>
+                )}
             </Grid>
 
-            {/* Tasks Table */}
+            {/* Tasks Table or Mobile View */}
             {selectedSubCrit && (
-                <TableContainer>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Estudiante</TableCell>
-                                {visibleTasks.map(task => (
-                                    <TableCell key={task.id} align="center">
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <Tooltip title={`Peso: ${task.weight}x`}>
-                                                <span>
-                                                    {task.name}
-                                                    {task.is_locked && <IconLock size="0.8rem" color="red" style={{ marginLeft: 4 }} />}
-                                                </span>
-                                            </Tooltip>
-                                            <IconButton size="small" onClick={(e) => handleBulkMenuOpen(e, task.id)} disabled={task.is_locked}>
-                                                <IconSettings size="1rem" />
-                                            </IconButton>
-                                        </div>
-                                    </TableCell>
-                                ))}
-                                <TableCell align="center" style={{ fontWeight: 'bold' }}>Promedio Final</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={visibleTasks.length + 2} align="center">
-                                        <CircularProgress />
-                                    </TableCell>
-                                </TableRow>
-                            ) : rows.length === 0 ? (
-                                <TableRow><TableCell colSpan={visibleTasks.length + 2} align="center">No hay estudiantes o tareas.</TableCell></TableRow>
-                            ) : (
-                                rows.map(row => {
-                                    // Calculate row average
-                                    let totalWeight = 0;
-                                    let weightedSum = 0;
-                                    tasks.forEach(task => { // Average includes ALL tasks or only visible? Usually all, but effectively visible ones for grading. 
-                                        // If a task is hidden, should it count? 
-                                        // Standard logic: It counts towards the grade if it exists. Hiding is usually just visual.
-                                        // Keeping 'tasks' here ensures calculation remains correct even if hidden.
-                                        const score = parseFloat(row.scores[task.id]) || 0;
-                                        weightedSum += score * task.weight;
-                                        totalWeight += task.weight;
-                                    });
-                                    const average = totalWeight > 0 ? (weightedSum / totalWeight).toFixed(2) : '-';
+                isMobile ? (
+                    <List style={{ marginTop: 10 }}>
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: 20 }}><CircularProgress /></div>
+                        ) : filteredRows.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: 20 }}>No hay estudiantes o tareas.</div>
+                        ) : (
+                            filteredRows.map(row => {
+                                let totalWeight = 0;
+                                let weightedSum = 0;
+                                tasks.forEach(task => {
+                                    const score = parseFloat(row.scores[task.id]) || 0;
+                                    weightedSum += score * task.weight;
+                                    totalWeight += task.weight;
+                                });
+                                const average = totalWeight > 0 ? (weightedSum / totalWeight).toFixed(2) : '-';
+
+                                const renderTaskContent = (task) => {
+                                    const score = row.scores[task.id];
+                                    const letter = getLetterFromScore(score);
 
                                     return (
-                                        <TableRow key={row.enrollment_id} hover>
-                                            <TableCell>{row.paterno} {row.materno} {row.nombre}</TableCell>
-                                            {visibleTasks.map(task => {
-                                                const score = row.scores[task.id];
-                                                const letter = getLetterFromScore(score);
-
-                                                return (
-                                                    <TableCell key={task.id} align="center" style={{ minWidth: isMobile ? 120 : 180, padding: isMobile ? 4 : 16 }}>
-                                                        {letter && !editMode[`${row.enrollment_id}-${task.id}`] ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', marginRight: 8 }}>{letter}</span>
-                                                                {task.is_locked ? (
-                                                                    <IconLock size="1rem" color="gray" />
-                                                                ) : (
-                                                                    <IconButton size="small" onClick={() => toggleEditMode(row.enrollment_id, task.id)}>
-                                                                        <IconPencil size="1rem" />
-                                                                    </IconButton>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <Grid container spacing={1} justifyContent="center" style={{ width: '100%', margin: 0 }}>
-                                                                {Object.keys(LETTER_SCORES).map(l => (
-                                                                    <Grid item key={l} style={{ padding: 2 }}>
-                                                                        <Button
-                                                                            variant="outlined"
-                                                                            size="small"
-                                                                            style={{
-                                                                                minWidth: isMobile ? 25 : 30,
-                                                                                padding: isMobile ? '2px' : '4px',
-                                                                                fontSize: isMobile ? '0.7rem' : '0.875rem',
-                                                                                borderColor: theme.palette.primary.main,
-                                                                                color: letter === l ? '#fff' : theme.palette.primary.main,
-                                                                                backgroundColor: letter === l ? theme.palette.primary.main : 'transparent'
-                                                                            }}
-                                                                            color="primary"
-                                                                            onClick={() => handleGradeClick(row.enrollment_id, task.id, l)}
-                                                                            disabled={task.is_locked}
-                                                                        >
-                                                                            {l}
-                                                                        </Button>
-                                                                    </Grid>
-                                                                ))}
-                                                            </Grid>
+                                        <div key={task.id} style={{ display: 'flex', flexDirection: 'column', marginBottom: visibleTasks.length === 1 ? 0 : 16, width: visibleTasks.length === 1 ? 'auto' : '100%' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: visibleTasks.length === 1 ? 0 : 8, width: '100%' }}>
+                                                {visibleTasks.length > 1 && (
+                                                    <Typography variant="body2" style={{ fontWeight: 600, marginRight: 'auto' }}>{task.name}</Typography>
+                                                )}
+                                                {letter && !editMode[`${row.enrollment_id}-${task.id}`] ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                        <Typography variant="subtitle1" style={{ fontWeight: 'bold', marginRight: 8, color: theme.palette.primary.main }}>{letter}</Typography>
+                                                        {!task.is_locked && (
+                                                            <IconButton size="small" onClick={() => toggleEditMode(row.enrollment_id, task.id)} style={{ padding: 4 }}>
+                                                                <IconPencil size="1.1rem" stroke={1.5} />
+                                                            </IconButton>
                                                         )}
-                                                    </TableCell>
-                                                );
-                                            })}
-                                            <TableCell align="center" style={{ fontWeight: 'bold', backgroundColor: '#e3f2fd' }}>
-                                                {average}
-                                            </TableCell>
-                                        </TableRow>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', gap: 4 }}>
+                                                        {Object.keys(LETTER_SCORES).map(l => (
+                                                            <Button
+                                                                key={l}
+                                                                variant={letter === l ? "contained" : "outlined"}
+                                                                size="small"
+                                                                color="primary"
+                                                                style={{
+                                                                    minWidth: 32,
+                                                                    height: 32,
+                                                                    padding: 0,
+                                                                }}
+                                                                onClick={() => handleGradeClick(row.enrollment_id, task.id, l)}
+                                                                disabled={task.is_locked}
+                                                            >
+                                                                {l}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                };
+
+                                if (visibleTasks.length === 1) {
+                                    return (
+                                        <MainCard key={row.enrollment_id} style={{ marginBottom: 16 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 4 }}>
+                                                <Typography variant="subtitle1" style={{ fontWeight: 'bold', marginRight: 16 }}>
+                                                    {row.paterno} {row.materno} {row.nombre}
+                                                </Typography>
+                                                <div style={{ flexShrink: 0 }}>
+                                                    {renderTaskContent(visibleTasks[0])}
+                                                </div>
+                                            </div>
+                                        </MainCard>
+                                    );
+                                }
+
+                                return (
+                                    <Accordion key={row.enrollment_id}>
+                                        <AccordionSummary expandIcon={<IconChevronDown />}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                                <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
+                                                    {row.paterno} {row.materno} {row.nombre}
+                                                </Typography>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4 }}>
+                                                    <Typography variant="body2" style={{ fontWeight: 'bold', color: '#1565c0' }}>
+                                                        Promedio: {average}
+                                                    </Typography>
+                                                </div>
+                                            </div>
+                                        </AccordionSummary>
+                                        <AccordionDetails style={{ flexDirection: 'column', padding: '0 16px 16px' }}>
+                                            {visibleTasks.map(task => renderTaskContent(task))}
+                                        </AccordionDetails>
+                                    </Accordion>
+                                );
+                            })
+                        )}
+                    </List>
+                ) : (
+                    <TableContainer>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Estudiante</TableCell>
+                                    {visibleTasks.map(task => (
+                                        <TableCell key={task.id} align="center">
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <Tooltip title={`Peso: ${task.weight}x`}>
+                                                    <span>
+                                                        {task.name}
+                                                        {task.is_locked && <IconLock size="0.8rem" color="red" style={{ marginLeft: 4 }} />}
+                                                    </span>
+                                                </Tooltip>
+                                                <IconButton size="small" onClick={(e) => handleBulkMenuOpen(e, task.id)} disabled={task.is_locked}>
+                                                    <IconSettings size="1rem" />
+                                                </IconButton>
+                                            </div>
+                                        </TableCell>
+                                    ))}
+                                    <TableCell align="center" style={{ fontWeight: 'bold' }}>Promedio Final</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={visibleTasks.length + 2} align="center">
+                                            <CircularProgress />
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredRows.length === 0 ? (
+                                    <TableRow><TableCell colSpan={visibleTasks.length + 2} align="center">No hay estudiantes o tareas.</TableCell></TableRow>
+                                ) : (
+                                    filteredRows.map(row => {
+                                        // Calculate row average
+                                        let totalWeight = 0;
+                                        let weightedSum = 0;
+                                        tasks.forEach(task => { // Average includes ALL tasks or only visible? Usually all, but effectively visible ones for grading. 
+                                            // If a task is hidden, should it count? 
+                                            // Standard logic: It counts towards the grade if it exists. Hiding is usually just visual.
+                                            // Keeping 'tasks' here ensures calculation remains correct even if hidden.
+                                            const score = parseFloat(row.scores[task.id]) || 0;
+                                            weightedSum += score * task.weight;
+                                            totalWeight += task.weight;
+                                        });
+                                        const average = totalWeight > 0 ? (weightedSum / totalWeight).toFixed(2) : '-';
+
+                                        return (
+                                            <TableRow key={row.enrollment_id} hover>
+                                                <TableCell>{row.paterno} {row.materno} {row.nombre}</TableCell>
+                                                {visibleTasks.map(task => {
+                                                    const score = row.scores[task.id];
+                                                    const letter = getLetterFromScore(score);
+
+                                                    return (
+                                                        <TableCell key={task.id} align="center" style={{ minWidth: isMobile ? 120 : 180, padding: isMobile ? 4 : 16 }}>
+                                                            {letter && !editMode[`${row.enrollment_id}-${task.id}`] ? (
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <span style={{ fontWeight: 'bold', fontSize: '1.2rem', marginRight: 8 }}>{letter}</span>
+                                                                    {task.is_locked ? (
+                                                                        <IconLock size="1rem" color="gray" />
+                                                                    ) : (
+                                                                        <IconButton size="small" onClick={() => toggleEditMode(row.enrollment_id, task.id)}>
+                                                                            <IconPencil size="1rem" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <Grid container spacing={1} justifyContent="center" style={{ width: '100%', margin: 0 }}>
+                                                                    {Object.keys(LETTER_SCORES).map(l => (
+                                                                        <Grid item key={l} style={{ padding: 2 }}>
+                                                                            <Button
+                                                                                variant="outlined"
+                                                                                size="small"
+                                                                                style={{
+                                                                                    minWidth: isMobile ? 25 : 30,
+                                                                                    padding: isMobile ? '2px' : '4px',
+                                                                                    fontSize: isMobile ? '0.7rem' : '0.875rem',
+                                                                                    borderColor: theme.palette.primary.main,
+                                                                                    color: letter === l ? '#fff' : theme.palette.primary.main,
+                                                                                    backgroundColor: letter === l ? theme.palette.primary.main : 'transparent'
+                                                                                }}
+                                                                                color="primary"
+                                                                                onClick={() => handleGradeClick(row.enrollment_id, task.id, l)}
+                                                                                disabled={task.is_locked}
+                                                                            >
+                                                                                {l}
+                                                                            </Button>
+                                                                        </Grid>
+                                                                    ))}
+                                                                </Grid>
+                                                            )}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                                <TableCell align="center" style={{ fontWeight: 'bold', backgroundColor: '#e3f2fd' }}>
+                                                    {average}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )
             )}
 
             {/* Bulk Actions Menu */}
@@ -573,6 +709,44 @@ const TaskGrading = () => {
                         Asignar {l}
                     </MenuItem>
                 ))}
+            </Menu>
+
+            {/* Floating Action Button and Menu */}
+            <Fab
+                color="secondary"
+                aria-label="actions"
+                onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
+                style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}
+            >
+                <IconSettings />
+            </Fab>
+
+            <Menu
+                anchorEl={actionsMenuAnchor}
+                keepMounted
+                open={Boolean(actionsMenuAnchor)}
+                onClose={() => setActionsMenuAnchor(null)}
+            >
+                <MenuItem
+                    onClick={() => {
+                        setActionsMenuAnchor(null);
+                        setConfirmOpen(true);
+                    }}
+                    disabled={!selectedSubCrit}
+                >
+                    <IconPlus style={{ marginRight: 8 }} size="1.2rem" />
+                    Crear Tarea
+                </MenuItem>
+                <MenuItem
+                    onClick={() => {
+                        setActionsMenuAnchor(null);
+                        setDeleteDialogOpen(true);
+                    }}
+                    disabled={!selectedSubCrit || tasks.length === 0}
+                >
+                    <IconSettings style={{ marginRight: 8 }} size="1.2rem" />
+                    Gestionar Tareas
+                </MenuItem>
             </Menu>
 
             <TaskDialog

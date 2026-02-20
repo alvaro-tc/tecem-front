@@ -20,10 +20,18 @@ import {
     IconButton,
     Tooltip,
     Dialog,
-    DialogContent
+    DialogContent,
+    useMediaQuery,
+    useTheme,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    ListItem,
+    ListItemText,
+    List
 } from '@material-ui/core';
 import MuiAlert from '@material-ui/lab/Alert';
-import { IconSearch, IconDeviceFloppy, IconSettings, IconEye, IconNotebook, IconDownload } from '@tabler/icons';
+import { IconSearch, IconDeviceFloppy, IconSettings, IconEye, IconNotebook, IconDownload, IconChevronDown } from '@tabler/icons';
 import MainCard from './../../../ui-component/cards/MainCard';
 import axios from 'axios';
 import configData from '../../../config';
@@ -35,7 +43,66 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import ExportGradesDialog from './ExportGradesDialog';
 
+const augmentRowsWithGrades = (rows, structure) => {
+    return rows.map(row => {
+        const criterionGrades = {};
+        let finalGradeNumeric = 0;
+
+        structure.forEach(group => {
+            let totalScore = 0;
+            // Sum regular sub-criteria scores
+            group.sub_criteria.forEach(sub => {
+                const score = row.grades[sub.id];
+                if (score !== undefined && score !== null && score !== '') {
+                    totalScore += parseFloat(score);
+                }
+            });
+
+            // Add special criteria (extra points) directly
+            let extraPoints = 0;
+            (group.special_criteria || []).forEach(spec => {
+                const score = row.grades[spec.id];
+                if (score !== undefined && score !== null && score !== '') {
+                    extraPoints += parseFloat(score);
+                }
+            });
+
+            // Total Score
+            let criterionGradeNumeric = 0;
+            let criterionGrade = '-';
+
+            if (totalScore > 0 || extraPoints > 0) {
+                const rawTotal = totalScore + extraPoints;
+                const maxWeight = parseFloat(group.weight);
+                // Cap the score at the criterion weight
+                criterionGradeNumeric = Math.min(rawTotal, maxWeight);
+                criterionGrade = criterionGradeNumeric.toFixed(2);
+            }
+
+            criterionGrades[group.id] = {
+                grade: criterionGradeNumeric,
+                weight: parseFloat(group.weight),
+                formatted: criterionGrade
+            };
+
+            if (criterionGradeNumeric > 0) {
+                finalGradeNumeric += criterionGradeNumeric;
+            }
+        });
+
+        const finalGrade = finalGradeNumeric > 0 ? finalGradeNumeric.toFixed(2) : '-';
+
+        return {
+            ...row,
+            _criterionGrades: criterionGrades,
+            _finalGrade: finalGrade
+        };
+    });
+};
+
 const Grades = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const account = useSelector((state) => state.account);
     const activeCourse = useSelector((state) => state.account.activeCourse);
 
@@ -249,6 +316,25 @@ const Grades = () => {
             .finally(() => setLoading(false));
     };
 
+    const saveSingleScore = (enrollmentId, critId, value) => {
+        const payload = {
+            updates: [{
+                enrollment_id: enrollmentId,
+                criterion_id: critId,
+                score: parseFloat(value) || 0
+            }]
+        };
+
+        axios.post(`${configData.API_SERVER}criterion-scores/bulk_save/`, payload)
+            .then(() => {
+                // Optional: success feedback
+            })
+            .catch(error => {
+                console.error(error);
+                setSnackbar({ open: true, message: 'Error al guardar nota', severity: 'error' });
+            });
+    };
+
     const handleScoreChange = (enrollmentId, critId, value) => {
         setRows(prevRows => prevRows.map(row => {
             if (row.enrollment_id === enrollmentId) {
@@ -267,38 +353,12 @@ const Grades = () => {
             ...prev,
             [`${enrollmentId}-${critId}`]: value
         }));
+
+        // Auto-save
+        saveSingleScore(enrollmentId, critId, value);
     };
 
-    const handleSave = () => {
-        const updates = Object.keys(changes).map(key => {
-            // Key format: `${enrollmentId}-${critId}`
-            // If critId is complex (e.g., 'special-5'), simple split('-') fails.
-            // EnrollmentId is integer, so we split by FIRST hyphen.
-            const firstHyphenIndex = key.indexOf('-');
-            const enrollmentId = key.substring(0, firstHyphenIndex);
-            const critId = key.substring(firstHyphenIndex + 1);
-
-            return {
-                enrollment_id: parseInt(enrollmentId),
-                criterion_id: critId, // Keep as string if it's 'special-X', backend handles string parsing
-                score: parseFloat(changes[key]) || 0
-            };
-        });
-
-        if (updates.length === 0) return;
-
-        setLoading(true);
-        axios.post(`${configData.API_SERVER}criterion-scores/bulk_save/`, { updates })
-            .then(() => {
-                setSnackbar({ open: true, message: 'Calificaciones guardadas correctamente', severity: 'success' });
-                setChanges({});
-            })
-            .catch(error => {
-                console.error(error);
-                setSnackbar({ open: true, message: 'Error al guardar', severity: 'error' });
-            })
-            .finally(() => setLoading(false));
-    };
+    // handleSave removed (auto-save implemented)
 
     const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
@@ -409,7 +469,9 @@ const Grades = () => {
     };
 
     // Filtering
-    const filteredRows = rows.filter(row => {
+    const rowsWithGrades = React.useMemo(() => augmentRowsWithGrades(rows, structure), [rows, structure]);
+
+    const filteredRows = rowsWithGrades.filter(row => {
         const term = search.toLowerCase();
         return (
             (row.paterno || '').toLowerCase().includes(term) ||
@@ -493,207 +555,334 @@ const Grades = () => {
                                 Ajustes
                             </Button>
                         </Tooltip>
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            startIcon={<IconDeviceFloppy />}
-                            onClick={handleSave}
-                            disabled={Object.keys(changes).length === 0 || loading}
-                        >
-                            Guardar Cambios
-                        </Button>
+                        {/* Auto-save enabled, manual button removed */}
                     </Grid>
                 </Grid>
 
                 <Divider style={{ margin: '20px 0' }} />
 
-                <TableContainer>
-                    <Table size="small" stickyHeader>
-                        <TableHead>
-                            {/* Group Header Row */}
-                            <TableRow>
-                                {visibleColumns.ci && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10, minWidth: 80 }}>CI</TableCell>}
-                                {visibleColumns.paterno && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 11, position: 'sticky', left: paternoLeft, minWidth: 140 }}>Paterno</TableCell>}
-                                {visibleColumns.materno && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 11, position: 'sticky', left: visibleColumns.paterno ? maternoLeft : 0, minWidth: 140 }}>Materno</TableCell>}
-                                {visibleColumns.nombre && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10, minWidth: 140 }}>Nombres</TableCell>}
-                                {structure.map((group, index) => {
-                                    const visibleSubCount = group.sub_criteria.filter(s => s.visible).length;
-                                    const visibleSpecialCount = (group.special_criteria || []).filter(s => s.visible).length;
-                                    const totalVisible = visibleSubCount + visibleSpecialCount;
+                {/* Desktop View */}
+                {!isMobile && (
+                    <TableContainer>
+                        <Table size="small" stickyHeader>
+                            <TableHead>
+                                {/* Group Header Row */}
+                                <TableRow>
+                                    {visibleColumns.ci && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10, minWidth: 80 }}>CI</TableCell>}
+                                    {visibleColumns.paterno && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 11, position: 'sticky', left: paternoLeft, minWidth: 140 }}>Paterno</TableCell>}
+                                    {visibleColumns.materno && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 11, position: 'sticky', left: visibleColumns.paterno ? maternoLeft : 0, minWidth: 140 }}>Materno</TableCell>}
+                                    {visibleColumns.nombre && <TableCell rowSpan={2} style={{ backgroundColor: '#fff', zIndex: 10, minWidth: 140 }}>Nombres</TableCell>}
+                                    {structure.map((group, index) => {
+                                        const visibleSubCount = group.sub_criteria.filter(s => s.visible).length;
+                                        const visibleSpecialCount = (group.special_criteria || []).filter(s => s.visible).length;
+                                        const totalVisible = visibleSubCount + visibleSpecialCount;
 
-                                    // Show nothing if no visible columns AND criterion grades are hidden
-                                    if (totalVisible === 0 && !showCriterionGrades) return null;
+                                        // Show nothing if no visible columns AND criterion grades are hidden
+                                        if (totalVisible === 0 && !showCriterionGrades) return null;
 
-                                    // Alternating background colors for groups
-                                    const bgColor = index % 2 === 0 ? '#e3f2fd' : '#f3e5f5';
+                                        // Alternating background colors for groups
+                                        const bgColor = index % 2 === 0 ? '#e3f2fd' : '#f3e5f5';
 
-                                    return (
-                                        <React.Fragment key={group.id}>
-                                            {totalVisible > 0 && (
-                                                <TableCell
-                                                    colSpan={totalVisible}
-                                                    align="center"
-                                                    style={{
-                                                        backgroundColor: bgColor,
-                                                        borderLeft: '2px solid #aaa',
-                                                        borderTop: '2px solid #aaa',
-                                                        fontWeight: 'bold',
-                                                        color: '#333'
-                                                    }}
-                                                >
-                                                    {group.name} <span style={{ fontSize: '0.8em', fontWeight: 'normal' }}>({group.weight} Pts)</span>
-                                                </TableCell>
-                                            )}
-                                            {showCriterionGrades && <TableCell rowSpan={2} align="center" style={{ backgroundColor: bgColor, fontWeight: 'bold', borderRight: '2px solid #aaa', borderTop: '2px solid #aaa', borderLeft: totalVisible === 0 ? '2px solid #aaa' : '1px solid #666', minWidth: 80 }}>Nota<br />{group.name}</TableCell>}
-                                        </React.Fragment>
-                                    );
-                                })}
-                                {showFinalGrade && <TableCell rowSpan={2} align="center" style={{ backgroundColor: '#c8e6c9', fontWeight: 'bold', borderLeft: '3px solid #4caf50', color: '#2e7d32' }}>Nota Final</TableCell>}
-                            </TableRow>
-                            {/* SubCriteria Header Row */}
-                            <TableRow>
-                                {structure.map((group, index) => {
-                                    const visibleSubs = group.sub_criteria.filter(s => s.visible);
-                                    const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
-                                    const totalVisible = visibleSubs.length + visibleSpecials.length;
-
-                                    // Skip if no visible columns AND criterion grades are hidden
-                                    if (totalVisible === 0 && !showCriterionGrades) return null;
-
-                                    return (
-                                        <React.Fragment key={group.id}>
-                                            {visibleSubs.map((sub, sIdx) => {
-                                                const isLast = sIdx === visibleSubs.length - 1 && visibleSpecials.length === 0 && !showCriterionGrades;
-                                                return (
+                                        return (
+                                            <React.Fragment key={group.id}>
+                                                {totalVisible > 0 && (
                                                     <TableCell
-                                                        key={sub.id}
+                                                        colSpan={totalVisible}
                                                         align="center"
                                                         style={{
-                                                            minWidth: 100,
-                                                            borderLeft: 'none',
-                                                            borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
-                                                            backgroundColor: '#fafafa'
+                                                            backgroundColor: bgColor,
+                                                            borderLeft: '2px solid #aaa',
+                                                            borderTop: '2px solid #aaa',
+                                                            fontWeight: 'bold',
+                                                            color: '#333'
                                                         }}
                                                     >
-                                                        {sub.name}
-                                                        <Typography variant="caption" display="block" color="textSecondary">{sub.percentage} Pts</Typography>
+                                                        {group.name} <span style={{ fontSize: '0.8em', fontWeight: 'normal' }}>({group.weight} Pts)</span>
                                                     </TableCell>
-                                                );
-                                            })}
-                                            {visibleSpecials.map((spec, specIdx) => {
-                                                const isLast = specIdx === visibleSpecials.length - 1 && !showCriterionGrades;
+                                                )}
+                                                {showCriterionGrades && <TableCell rowSpan={2} align="center" style={{ backgroundColor: bgColor, fontWeight: 'bold', borderRight: '2px solid #aaa', borderTop: '2px solid #aaa', borderLeft: totalVisible === 0 ? '2px solid #aaa' : '1px solid #666', minWidth: 80 }}>Nota<br />{group.name}</TableCell>}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                    {showFinalGrade && <TableCell rowSpan={2} align="center" style={{ backgroundColor: '#c8e6c9', fontWeight: 'bold', borderLeft: '3px solid #4caf50', color: '#2e7d32' }}>Nota Final</TableCell>}
+                                </TableRow>
+                                {/* SubCriteria Header Row */}
+                                <TableRow>
+                                    {structure.map((group, index) => {
+                                        const visibleSubs = group.sub_criteria.filter(s => s.visible);
+                                        const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+                                        const totalVisible = visibleSubs.length + visibleSpecials.length;
+
+                                        // Skip if no visible columns AND criterion grades are hidden
+                                        if (totalVisible === 0 && !showCriterionGrades) return null;
+
+                                        return (
+                                            <React.Fragment key={group.id}>
+                                                {visibleSubs.map((sub, sIdx) => {
+                                                    const isLast = sIdx === visibleSubs.length - 1 && visibleSpecials.length === 0 && !showCriterionGrades;
+                                                    return (
+                                                        <TableCell
+                                                            key={sub.id}
+                                                            align="center"
+                                                            style={{
+                                                                minWidth: 100,
+                                                                borderLeft: 'none',
+                                                                borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                                backgroundColor: '#fafafa'
+                                                            }}
+                                                        >
+                                                            {sub.name}
+                                                            <Typography variant="caption" display="block" color="textSecondary">{sub.percentage} Pts</Typography>
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                                {visibleSpecials.map((spec, specIdx) => {
+                                                    const isLast = specIdx === visibleSpecials.length - 1 && !showCriterionGrades;
+                                                    return (
+                                                        <TableCell
+                                                            key={spec.id}
+                                                            align="center"
+                                                            style={{
+                                                                minWidth: 100,
+                                                                borderLeft: 'none',
+                                                                borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                                backgroundColor: '#fff3e0'
+                                                            }}
+                                                        >
+                                                            ⭐ {spec.name}
+                                                            <Typography variant="caption" display="block" style={{ color: '#e65100' }}>+{spec.percentage} pts</Typography>
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </TableRow>
+                            </TableHead >
+                            <TableBody>
+                                {filteredRows.length === 0 ? (
+                                    <TableRow><TableCell colSpan={10} align="center">No hay estudiantes.</TableCell></TableRow>
+                                ) : (
+                                    filteredRows.map(row => (
+                                        <TableRow key={row.enrollment_id} hover>
+                                            {visibleColumns.ci && <TableCell style={{ backgroundColor: '#fff', zIndex: 5 }}>{row.ci}</TableCell>}
+                                            {visibleColumns.paterno && <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: paternoLeft, zIndex: 6, fontWeight: 'bold' }}>{row.paterno}</TableCell>}
+                                            {visibleColumns.materno && <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: visibleColumns.paterno ? maternoLeft : 0, zIndex: 6, fontWeight: 'bold' }}>{row.materno}</TableCell>}
+                                            {visibleColumns.nombre && <TableCell style={{ backgroundColor: '#fff', borderRight: '2px solid #ddd' }}>{row.nombre}</TableCell>}
+                                            {structure.map((group, groupIndex) => {
+                                                const visibleSubs = group.sub_criteria.filter(sub => sub.visible);
+                                                const visibleSpecials = (group.special_criteria || []).filter(spec => spec.visible);
+                                                const bgColor = groupIndex % 2 === 0 ? '#bbdefb' : '#e1bee7';
+
+                                                const criterionData = row._criterionGrades[group.id] || { formatted: '-', grade: 0 };
+
                                                 return (
-                                                    <TableCell
-                                                        key={spec.id}
-                                                        align="center"
-                                                        style={{
-                                                            minWidth: 100,
-                                                            borderLeft: 'none',
-                                                            borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
-                                                            backgroundColor: '#fff3e0'
-                                                        }}
-                                                    >
-                                                        ⭐ {spec.name}
-                                                        <Typography variant="caption" display="block" style={{ color: '#e65100' }}>+{spec.percentage} pts</Typography>
-                                                    </TableCell>
-                                                );
-                                            })}
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </TableRow>
-                        </TableHead >
-                        <TableBody>
-                            {filteredRows.length === 0 ? (
-                                <TableRow><TableCell colSpan={10} align="center">No hay estudiantes.</TableCell></TableRow>
-                            ) : (
-                                filteredRows.map(row => (
-                                    <TableRow key={row.enrollment_id} hover>
-                                        {visibleColumns.ci && <TableCell style={{ backgroundColor: '#fff', zIndex: 5 }}>{row.ci}</TableCell>}
-                                        {visibleColumns.paterno && <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: paternoLeft, zIndex: 6, fontWeight: 'bold' }}>{row.paterno}</TableCell>}
-                                        {visibleColumns.materno && <TableCell style={{ backgroundColor: '#fff', position: 'sticky', left: visibleColumns.paterno ? maternoLeft : 0, zIndex: 6, fontWeight: 'bold' }}>{row.materno}</TableCell>}
-                                        {visibleColumns.nombre && <TableCell style={{ backgroundColor: '#fff', borderRight: '2px solid #ddd' }}>{row.nombre}</TableCell>}
-                                        {structure.map((group, groupIndex) => {
-                                            const visibleSubs = group.sub_criteria.filter(sub => sub.visible);
-                                            const visibleSpecials = (group.special_criteria || []).filter(spec => spec.visible);
-
-                                            // Calculate criterion grade = Sum(subcriterios) + extraPoints
-                                            let criterionGrade = '-';
-                                            let criterionGradeNumeric = null;
-                                            let totalScore = 0;
-
-                                            // Sum regular sub-criteria scores
-                                            group.sub_criteria.forEach(sub => {
-                                                const score = row.grades[sub.id];
-                                                if (score !== undefined && score !== null && score !== '') {
-                                                    totalScore += parseFloat(score);
-                                                }
-                                            });
-
-                                            // Add special criteria (extra points) directly
-                                            let extraPoints = 0;
-                                            (group.special_criteria || []).forEach(spec => {
-                                                const score = row.grades[spec.id];
-                                                if (score !== undefined && score !== null && score !== '') {
-                                                    extraPoints += parseFloat(score);
-                                                }
-                                            });
-
-                                            // Total Score
-                                            if (totalScore > 0 || extraPoints > 0) {
-                                                const rawTotal = totalScore + extraPoints;
-                                                const maxWeight = parseFloat(group.weight);
-                                                // Cap the score at the criterion weight
-                                                criterionGradeNumeric = Math.min(rawTotal, maxWeight);
-                                                criterionGrade = criterionGradeNumeric.toFixed(2);
-                                            }
-
-                                            const bgColor = groupIndex % 2 === 0 ? '#bbdefb' : '#e1bee7';
-
-                                            return (
-                                                <React.Fragment key={group.id}>
-                                                    {visibleSubs.map((sub, sIdx) => {
-                                                        const isLast = sIdx === visibleSubs.length - 1 && visibleSpecials.length === 0 && !showCriterionGrades;
-                                                        return (
-                                                            <TableCell
-                                                                key={sub.id}
-                                                                align="center"
-                                                                style={{
-                                                                    borderLeft: 'none',
-                                                                    borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
-                                                                    backgroundColor: sub.editable ? 'inherit' : '#f5f5f5'
-                                                                }}
-                                                            >
-                                                                {sub.has_tasks || sub.has_projects ? (
-                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                        <Typography variant="body2" style={{ marginRight: 8, fontWeight: 'bold' }}>
+                                                    <React.Fragment key={group.id}>
+                                                        {visibleSubs.map((sub, sIdx) => {
+                                                            const isLast = sIdx === visibleSubs.length - 1 && visibleSpecials.length === 0 && !showCriterionGrades;
+                                                            return (
+                                                                <TableCell
+                                                                    key={sub.id}
+                                                                    align="center"
+                                                                    style={{
+                                                                        borderLeft: 'none',
+                                                                        borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                                        backgroundColor: sub.editable ? 'inherit' : '#f5f5f5'
+                                                                    }}
+                                                                >
+                                                                    {sub.has_tasks || sub.has_projects ? (
+                                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                            <Typography variant="body2" style={{ marginRight: 8, fontWeight: 'bold' }}>
+                                                                                {row.grades[sub.id] !== undefined && row.grades[sub.id] !== null ? parseFloat(row.grades[sub.id]).toFixed(2) : '-'}
+                                                                            </Typography>
+                                                                            {sub.has_tasks ? (
+                                                                                <Tooltip title="Ver Tareas">
+                                                                                    <IconButton
+                                                                                        component={Link}
+                                                                                        to={`/extras/task-grading?sub_criterion_id=${sub.id}`}
+                                                                                        size="small"
+                                                                                        color="primary"
+                                                                                    >
+                                                                                        <IconEye size="1.2rem" />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                            ) : sub.has_projects ? (
+                                                                                (() => {
+                                                                                    const project = projects.find(p => p.sub_criterion === sub.id && p.members.includes(row.enrollment_id));
+                                                                                    return (
+                                                                                        <Tooltip title={project ? `Gestionar Proyecto: ${project.name}` : "Estudiante sin proyecto asignado"}>
+                                                                                            <IconButton
+                                                                                                size="small"
+                                                                                                onClick={() => project ? handleManageProject(project) : null}
+                                                                                                style={{ color: project ? undefined : '#ccc' }}
+                                                                                                color={project ? "secondary" : "default"}
+                                                                                            >
+                                                                                                <IconNotebook size="1.2rem" />
+                                                                                            </IconButton>
+                                                                                        </Tooltip>
+                                                                                    );
+                                                                                })()
+                                                                            ) : null}
+                                                                        </div>
+                                                                    ) : sub.editable ? (
+                                                                        <TextField
+                                                                            type="number"
+                                                                            value={row.grades[sub.id] || ''}
+                                                                            onChange={(e) => {
+                                                                                let val = e.target.value;
+                                                                                if (val !== '') {
+                                                                                    const numVal = parseFloat(val);
+                                                                                    if (numVal > sub.percentage) {
+                                                                                        // Strict enforcement: Don't allow typing more
+                                                                                        return;
+                                                                                        // OR cap it? User said "No debes dejar poner". 
+                                                                                        // Blocking the input is safer.
+                                                                                    }
+                                                                                    if (numVal < 0) return;
+                                                                                }
+                                                                                handleScoreChange(row.enrollment_id, sub.id, val);
+                                                                            }}
+                                                                            variant="outlined"
+                                                                            size="small"
+                                                                            style={{ width: 80 }}
+                                                                            inputProps={{ min: 0, max: sub.percentage, step: "0.01", style: { textAlign: 'center' } }}
+                                                                        />
+                                                                    ) : (
+                                                                        <Typography variant="body2" color="textSecondary" style={{ fontWeight: 500 }}>
                                                                             {row.grades[sub.id] !== undefined && row.grades[sub.id] !== null ? parseFloat(row.grades[sub.id]).toFixed(2) : '-'}
                                                                         </Typography>
-                                                                        {sub.has_tasks ? (
-                                                                            <Tooltip title="Ver Tareas">
+                                                                    )}
+                                                                </TableCell>
+                                                            );
+                                                        })}
+                                                        {visibleSpecials.map((spec, specIdx) => {
+                                                            const isLast = specIdx === visibleSpecials.length - 1 && !showCriterionGrades;
+                                                            return (
+                                                                <TableCell
+                                                                    key={spec.id}
+                                                                    align="center"
+                                                                    style={{
+                                                                        borderLeft: 'none',
+                                                                        borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
+                                                                        backgroundColor: '#fff3e0'
+                                                                    }}
+                                                                >
+                                                                    {spec.has_tasks ? (
+                                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                            <Typography variant="body2" style={{ marginRight: 8, color: '#e65100', fontWeight: 'bold' }}>
+                                                                                {row.grades[spec.id] !== undefined && row.grades[spec.id] !== null ? `+${parseFloat(row.grades[spec.id]).toFixed(2)}` : '-'}
+                                                                            </Typography>
+                                                                            <Tooltip title="Ver Tareas Extra">
                                                                                 <IconButton
                                                                                     component={Link}
-                                                                                    to={`/extras/task-grading?sub_criterion_id=${sub.id}`}
+                                                                                    to={`/extras/task-grading?sub_criterion_id=${spec.id}`}
                                                                                     size="small"
-                                                                                    color="primary"
+                                                                                    style={{ color: '#e65100' }}
                                                                                 >
                                                                                     <IconEye size="1.2rem" />
                                                                                 </IconButton>
                                                                             </Tooltip>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <TextField
+                                                                            type="number"
+                                                                            value={row.grades[spec.id] || ''}
+                                                                            onChange={(e) => {
+                                                                                let val = e.target.value;
+                                                                                if (val !== '') {
+                                                                                    const numVal = parseFloat(val);
+                                                                                    if (numVal > spec.percentage) return; // Strict enforcement
+                                                                                    if (numVal < 0) return;
+                                                                                }
+                                                                                handleScoreChange(row.enrollment_id, spec.id, val);
+                                                                            }}
+                                                                            variant="outlined"
+                                                                            size="small"
+                                                                            style={{ width: 80 }}
+                                                                            inputProps={{ min: 0, max: spec.percentage, step: "0.01", style: { textAlign: 'center', color: '#e65100' } }}
+                                                                        />
+                                                                    )}
+                                                                </TableCell>
+                                                            );
+                                                        })}
+                                                        {/* Criterion Grade Column */}
+                                                        {showCriterionGrades && (
+                                                            <TableCell align="center" style={{ backgroundColor: bgColor, fontWeight: 'bold', borderRight: '2px solid #aaa', borderLeft: 'none' }}>
+                                                                <Typography variant="body2" style={{ fontWeight: 'bold', color: '#1565c0' }}>
+                                                                    {criterionData.formatted}
+                                                                </Typography>
+                                                            </TableCell>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                            {showFinalGrade && (
+                                                <TableCell align="center" style={{ backgroundColor: '#c8e6c9', fontWeight: 'bold', borderLeft: '3px solid #4caf50', color: '#2e7d32' }}>
+                                                    {row._finalGrade}
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table >
+                    </TableContainer >
+                )}
+
+                {/* Mobile View */}
+                {isMobile && (
+                    <List>
+                        {filteredRows.map((row) => {
+                            return (
+                                <Accordion key={row.enrollment_id}>
+                                    <AccordionSummary expandIcon={<IconChevronDown />}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                            <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
+                                                {row.paterno} {row.materno} {row.nombre}
+                                            </Typography>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                                                <Typography variant="body2" color="textSecondary">CI: {row.ci}</Typography>
+                                                {showFinalGrade && (
+                                                    <Typography variant="body2" style={{ fontWeight: 'bold', color: '#2e7d32' }}>
+                                                        Nota Final: {row._finalGrade}
+                                                    </Typography>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </AccordionSummary>
+                                    <AccordionDetails style={{ flexDirection: 'column', padding: '0 16px 16px' }}>
+                                        {structure.map((group) => {
+                                            const visibleSubs = group.sub_criteria.filter(s => s.visible);
+                                            const visibleSpecials = (group.special_criteria || []).filter(s => s.visible);
+                                            const totalVisible = visibleSubs.length + visibleSpecials.length;
+
+                                            if (totalVisible === 0 && !showCriterionGrades) return null;
+
+                                            return (
+                                                <div key={group.id} style={{ marginBottom: 16 }}>
+                                                    <Typography variant="subtitle2" style={{ backgroundColor: '#e3f2fd', padding: '4px 8px', borderRadius: 4, marginBottom: 8 }}>
+                                                        {group.name} ({group.weight}%)
+                                                    </Typography>
+                                                    {visibleSubs.map(sub => (
+                                                        <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingLeft: 8 }}>
+                                                            <Typography variant="body2" style={{ flex: 1 }}>{sub.name} ({sub.percentage}%)</Typography>
+                                                            <div style={{ width: 100 }}>
+                                                                {sub.has_tasks || sub.has_projects ? (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                                                        <Typography variant="body2" style={{ marginRight: 8, fontWeight: 'bold' }}>
+                                                                            {row.grades[sub.id] !== undefined && row.grades[sub.id] !== null ? parseFloat(row.grades[sub.id]).toFixed(2) : '-'}
+                                                                        </Typography>
+                                                                        {sub.has_tasks ? (
+                                                                            <IconButton component={Link} to={`/extras/task-grading?sub_criterion_id=${sub.id}`} size="small" color="primary">
+                                                                                <IconEye size="1.2rem" />
+                                                                            </IconButton>
                                                                         ) : sub.has_projects ? (
                                                                             (() => {
                                                                                 const project = projects.find(p => p.sub_criterion === sub.id && p.members.includes(row.enrollment_id));
                                                                                 return (
-                                                                                    <Tooltip title={project ? `Gestionar Proyecto: ${project.name}` : "Estudiante sin proyecto asignado"}>
-                                                                                        <IconButton
-                                                                                            size="small"
-                                                                                            onClick={() => project ? handleManageProject(project) : null}
-                                                                                            style={{ color: project ? undefined : '#ccc' }}
-                                                                                            color={project ? "secondary" : "default"}
-                                                                                        >
-                                                                                            <IconNotebook size="1.2rem" />
-                                                                                        </IconButton>
-                                                                                    </Tooltip>
+                                                                                    <IconButton size="small" onClick={() => project ? handleManageProject(project) : null} color={project ? "secondary" : "default"}>
+                                                                                        <IconNotebook size="1.2rem" />
+                                                                                    </IconButton>
                                                                                 );
                                                                             })()
                                                                         ) : null}
@@ -706,56 +895,36 @@ const Grades = () => {
                                                                             let val = e.target.value;
                                                                             if (val !== '') {
                                                                                 const numVal = parseFloat(val);
-                                                                                if (numVal > sub.percentage) {
-                                                                                    // Strict enforcement: Don't allow typing more
-                                                                                    return;
-                                                                                    // OR cap it? User said "No debes dejar poner". 
-                                                                                    // Blocking the input is safer.
-                                                                                }
+                                                                                if (numVal > sub.percentage) return;
                                                                                 if (numVal < 0) return;
                                                                             }
                                                                             handleScoreChange(row.enrollment_id, sub.id, val);
                                                                         }}
                                                                         variant="outlined"
                                                                         size="small"
-                                                                        style={{ width: 80 }}
+                                                                        fullWidth
                                                                         inputProps={{ min: 0, max: sub.percentage, step: "0.01", style: { textAlign: 'center' } }}
                                                                     />
                                                                 ) : (
-                                                                    <Typography variant="body2" color="textSecondary" style={{ fontWeight: 500 }}>
+                                                                    <Typography variant="body2" align="right">
                                                                         {row.grades[sub.id] !== undefined && row.grades[sub.id] !== null ? parseFloat(row.grades[sub.id]).toFixed(2) : '-'}
                                                                     </Typography>
                                                                 )}
-                                                            </TableCell>
-                                                        );
-                                                    })}
-                                                    {visibleSpecials.map((spec, specIdx) => {
-                                                        const isLast = specIdx === visibleSpecials.length - 1 && !showCriterionGrades;
-                                                        return (
-                                                            <TableCell
-                                                                key={spec.id}
-                                                                align="center"
-                                                                style={{
-                                                                    borderLeft: 'none',
-                                                                    borderRight: isLast ? '2px solid #aaa' : '1px solid #ddd',
-                                                                    backgroundColor: '#fff3e0'
-                                                                }}
-                                                            >
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {visibleSpecials.map(spec => (
+                                                        <div key={spec.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingLeft: 8, backgroundColor: '#fff3e0', padding: 4, borderRadius: 4 }}>
+                                                            <Typography variant="body2" style={{ flex: 1, color: '#e65100' }}>⭐ {spec.name} (+{spec.percentage})</Typography>
+                                                            <div style={{ width: 100 }}>
                                                                 {spec.has_tasks ? (
-                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                                                                         <Typography variant="body2" style={{ marginRight: 8, color: '#e65100', fontWeight: 'bold' }}>
                                                                             {row.grades[spec.id] !== undefined && row.grades[spec.id] !== null ? `+${parseFloat(row.grades[spec.id]).toFixed(2)}` : '-'}
                                                                         </Typography>
-                                                                        <Tooltip title="Ver Tareas Extra">
-                                                                            <IconButton
-                                                                                component={Link}
-                                                                                to={`/extras/task-grading?sub_criterion_id=${spec.id}`}
-                                                                                size="small"
-                                                                                style={{ color: '#e65100' }}
-                                                                            >
-                                                                                <IconEye size="1.2rem" />
-                                                                            </IconButton>
-                                                                        </Tooltip>
+                                                                        <IconButton component={Link} to={`/extras/task-grading?sub_criterion_id=${spec.id}`} size="small" style={{ color: '#e65100' }}>
+                                                                            <IconEye size="1.2rem" />
+                                                                        </IconButton>
                                                                     </div>
                                                                 ) : (
                                                                     <TextField
@@ -765,61 +934,29 @@ const Grades = () => {
                                                                             let val = e.target.value;
                                                                             if (val !== '') {
                                                                                 const numVal = parseFloat(val);
-                                                                                if (numVal > spec.percentage) return; // Strict enforcement
+                                                                                if (numVal > spec.percentage) return;
                                                                                 if (numVal < 0) return;
                                                                             }
                                                                             handleScoreChange(row.enrollment_id, spec.id, val);
                                                                         }}
                                                                         variant="outlined"
                                                                         size="small"
-                                                                        style={{ width: 80 }}
+                                                                        fullWidth
                                                                         inputProps={{ min: 0, max: spec.percentage, step: "0.01", style: { textAlign: 'center', color: '#e65100' } }}
                                                                     />
                                                                 )}
-                                                            </TableCell>
-                                                        );
-                                                    })}
-                                                    {/* Criterion Grade Column */}
-                                                    {showCriterionGrades && (
-                                                        <TableCell align="center" style={{ backgroundColor: bgColor, fontWeight: 'bold', borderRight: '2px solid #aaa', borderLeft: 'none' }}>
-                                                            <Typography variant="body2" style={{ fontWeight: 'bold', color: '#1565c0' }}>
-                                                                {criterionGrade}
-                                                            </Typography>
-                                                        </TableCell>
-                                                    )}
-                                                    {/* Store criterionGradeNumeric for final grade calculation */}
-                                                    {(() => {
-                                                        if (!row._criterionGrades) row._criterionGrades = {};
-                                                        row._criterionGrades[group.id] = { grade: criterionGradeNumeric, weight: parseFloat(group.weight) };
-                                                        return null;
-                                                    })()}
-                                                </React.Fragment>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             );
                                         })}
-                                        {showFinalGrade && (
-                                            <TableCell align="center" style={{ backgroundColor: '#c8e6c9', fontWeight: 'bold', borderLeft: '3px solid #4caf50', color: '#2e7d32' }}>
-                                                {(() => {
-                                                    // Calculate final grade as direct sum of criterion grades (already weighted)
-                                                    let finalGradeNumeric = 0;
-                                                    if (row._criterionGrades) {
-                                                        Object.values(row._criterionGrades).forEach(({ grade }) => {
-                                                            if (grade !== null) {
-                                                                finalGradeNumeric += grade;
-                                                            }
-                                                        });
-                                                    }
-                                                    const finalGrade = finalGradeNumeric > 0 ? finalGradeNumeric.toFixed(2) : '-';
-                                                    return finalGrade;
-                                                })()}
-                                            </TableCell>
-                                        )}
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table >
-                </TableContainer >
-            </CardContent >
+                                    </AccordionDetails>
+                                </Accordion>
+                            );
+                        })}
+                    </List>
+                )}            </CardContent >
 
             <Snackbar
                 open={snackbar.open}
