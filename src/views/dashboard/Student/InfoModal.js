@@ -3,7 +3,8 @@ import React from 'react';
 import { Dialog, DialogTitle, DialogContent, Typography, Button, IconButton, Grid, Divider, Box } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
 import WhatsAppIcon from '@material-ui/icons/WhatsApp';
-import { formatSchedule, getScheduleItems } from '../../../utils/scheduleUtils';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
+import { getScheduleItems } from '../../../utils/scheduleUtils';
 
 const InfoModal = ({ open, onClose, course }) => {
     if (!course) return null;
@@ -52,7 +53,7 @@ const InfoModal = ({ open, onClose, course }) => {
 
                     {course.whatsapp_link && (
                         <Grid item xs={12}>
-                            <Box mt={2} display="flex" justifyContent="center">
+                            <Box mt={2} display="flex" justifyContent="center" gap={2} flexWrap="wrap">
                                 <Button
                                     variant="contained"
                                     color="success"
@@ -62,6 +63,34 @@ const InfoModal = ({ open, onClose, course }) => {
                                     rel="noopener noreferrer"
                                 >
                                     Unirse al Grupo de WhatsApp
+                                </Button>
+                                {course.platform_link && (
+                                    <Button
+                                        variant="outlined"
+                                        color="primary"
+                                        startIcon={<OpenInNewIcon />}
+                                        href={course.platform_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Ir a la Plataforma Virtual
+                                    </Button>
+                                )}
+                            </Box>
+                        </Grid>
+                    )}
+                    {!course.whatsapp_link && course.platform_link && (
+                        <Grid item xs={12}>
+                            <Box mt={2} display="flex" justifyContent="center">
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    startIcon={<OpenInNewIcon />}
+                                    href={course.platform_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Ir a la Plataforma Virtual
                                 </Button>
                             </Box>
                         </Grid>

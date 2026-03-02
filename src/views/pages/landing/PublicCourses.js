@@ -51,6 +51,15 @@ const PublicCourses = () => {
     const [success, setSuccess] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+    // Links modal state
+    const [openLinksModal, setOpenLinksModal] = useState(false);
+    const [linksModalCourse, setLinksModalCourse] = useState(null);
+
+    const handleVerMas = (course) => {
+        setLinksModalCourse(course);
+        setOpenLinksModal(true);
+    };
+
     useEffect(() => {
         const fetchCourses = async () => {
             try {
@@ -215,16 +224,30 @@ const PublicCourses = () => {
                                                     )}
                                                 </Box>
 
-                                                <Button
-                                                    fullWidth
-                                                    variant="contained"
-                                                    color="secondary"
-                                                    size="large"
-                                                    sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '1rem' }}
-                                                    onClick={() => handleRegisterClick(course)}
-                                                >
-                                                    Inscribirse Ahora
-                                                </Button>
+                                                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                                                    {(course.whatsapp_link || course.platform_link) && (
+                                                        <Button
+                                                            fullWidth
+                                                            variant="outlined"
+                                                            color="primary"
+                                                            size="large"
+                                                            sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '0.95rem' }}
+                                                            onClick={() => handleVerMas(course)}
+                                                        >
+                                                            Ver más
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        fullWidth
+                                                        variant="contained"
+                                                        color="secondary"
+                                                        size="large"
+                                                        sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '1rem' }}
+                                                        onClick={() => handleRegisterClick(course)}
+                                                    >
+                                                        Inscribirse Ahora
+                                                    </Button>
+                                                </Box>
                                             </CardContent>
                                         </MainCard>
                                     </Grid>
@@ -397,6 +420,48 @@ const PublicCourses = () => {
                         </Box>
                     )}
                 </DialogContent>
+            </Dialog>
+
+            {/* Links Modal */}
+            <Dialog open={openLinksModal} onClose={() => setOpenLinksModal(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>
+                    {linksModalCourse?.subject_details?.name}
+                    <Typography variant="body2" color="textSecondary">
+                        Paralelo {linksModalCourse?.parallel}
+                    </Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Box display="flex" flexDirection="column" gap={2} pt={1}>
+                        {linksModalCourse?.whatsapp_link && (
+                            <Button
+                                variant="contained"
+                                href={linksModalCourse.whatsapp_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fullWidth
+                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', background: '#25D366', '&:hover': { background: '#1ebe5d' } }}
+                            >
+                                💬 Unirse al grupo de WhatsApp
+                            </Button>
+                        )}
+                        {linksModalCourse?.platform_link && (
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                href={linksModalCourse.platform_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fullWidth
+                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none' }}
+                            >
+                                🎓 Ir a la Plataforma Virtual
+                            </Button>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenLinksModal(false)} color="primary">Cerrar</Button>
+                </DialogActions>
             </Dialog>
 
             {/* Snackbar Notifications */}

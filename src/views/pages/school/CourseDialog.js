@@ -96,6 +96,12 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
             formData.append('subject', values.subject);
             formData.append('parallel', values.parallel);
             if (values.teacher) formData.append('teacher', values.teacher);
+            // Send course_identifier only when non-empty; empty means "no identifier" (null in DB)
+            if (values.course_identifier && values.course_identifier.trim()) {
+                formData.append('course_identifier', values.course_identifier.trim());
+            } else {
+                formData.append('course_identifier', '');
+            }
 
             // Serialize Schedule
             if (values.scheduleList && values.scheduleList.length > 0) {
@@ -111,6 +117,9 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
             }
 
             if (values.whatsapp_link) formData.append('whatsapp_link', values.whatsapp_link);
+            else formData.append('whatsapp_link', '');
+            if (values.platform_link) formData.append('platform_link', values.platform_link);
+            else formData.append('platform_link', '');
             formData.append('is_registration_open', values.is_registration_open);
 
             if (values.registration_start) formData.append('registration_start', values.registration_start);
@@ -160,22 +169,26 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                     <DialogTitle>{course ? 'Editar Paralelo' : 'Añadir Paralelo'}</DialogTitle>
                     <Formik
                         initialValues={{
+                            course_identifier: course ? (course.course_identifier || '') : '',
                             subject: course ? course.subject : '',
                             parallel: course ? course.parallel : '',
                             teacher: course ? course.teacher : '',
                             scheduleList: parseSchedule(course ? course.schedule : ''),
-                            whatsapp_link: course ? course.whatsapp_link : '',
+                            whatsapp_link: course ? (course.whatsapp_link || '') : '',
+                            platform_link: course ? (course.platform_link || '') : '',
                             is_registration_open: course ? course.is_registration_open : false,
                             registration_start: course && course.registration_start ? course.registration_start.slice(0, 16) : '',
                             registration_end: course && course.registration_end ? course.registration_end.slice(0, 16) : '',
                             image: course ? course.image : null
                         }}
                         validationSchema={Yup.object().shape({
+                            course_identifier: Yup.string().max(100).nullable(),
                             subject: Yup.number().required('La materia es requerida'),
                             parallel: Yup.string().max(50).required('El paralelo es requerido'),
                             teacher: Yup.number().nullable(),
                             // scheduleList validation logic could be added here if strict
                             whatsapp_link: Yup.string().url('Debe ser una URL válida').nullable(),
+                            platform_link: Yup.string().url('Debe ser una URL válida').nullable(),
                             is_registration_open: Yup.boolean(),
                             registration_start: Yup.string().nullable(),
                             registration_end: Yup.string().nullable()
@@ -186,6 +199,19 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                             <form onSubmit={handleSubmit}>
                                 <DialogContent>
                                     <Grid container spacing={2}>
+                                        <Grid item xs={12}>
+                                            <TextField
+                                                fullWidth
+                                                label="Identificador del Curso (Opcional)"
+                                                name="course_identifier"
+                                                value={values.course_identifier || ''}
+                                                onBlur={handleBlur}
+                                                onChange={handleChange}
+                                                error={Boolean(touched.course_identifier && errors.course_identifier)}
+                                                helperText={(touched.course_identifier && errors.course_identifier) || 'Identificador único opcional (ej. PROG-2026-A)'}
+                                                inputProps={{ maxLength: 100 }}
+                                            />
+                                        </Grid>
                                         <Grid item xs={12}>
                                             <FormControlLabel
                                                 control={
@@ -380,7 +406,7 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                                             </>
                                         )}
 
-                                        <Grid item xs={12}>
+                                        <Grid item xs={12} md={6}>
                                             <TextField
                                                 fullWidth
                                                 label="Link WhatsApp (Opcional)"
@@ -390,6 +416,18 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                                                 onChange={handleChange}
                                                 error={Boolean(touched.whatsapp_link && errors.whatsapp_link)}
                                                 helperText={touched.whatsapp_link && errors.whatsapp_link}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} md={6}>
+                                            <TextField
+                                                fullWidth
+                                                label="Enlace a la Plataforma Virtual (Opcional)"
+                                                name="platform_link"
+                                                value={values.platform_link || ''}
+                                                onBlur={handleBlur}
+                                                onChange={handleChange}
+                                                error={Boolean(touched.platform_link && errors.platform_link)}
+                                                helperText={touched.platform_link && errors.platform_link}
                                             />
                                         </Grid>
 

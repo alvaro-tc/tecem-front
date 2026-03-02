@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@material-ui/core/styles';
-import { Button, Grid, Typography, Container, Box, Stack, Card, CardContent, CircularProgress, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@material-ui/core';
+import { Button, Grid, Typography, Container, Box, Stack, Card, CardContent, CircularProgress, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Divider } from '@material-ui/core';
 
 // project imports
 import LandingHeader from './LandingHeader';
@@ -36,6 +36,10 @@ const LandingPage = () => {
     });
     const [submitting, setSubmitting] = React.useState(false);
     const [success, setSuccess] = React.useState(false);
+
+    // Links modal state
+    const [openLinksModal, setOpenLinksModal] = React.useState(false);
+    const [linksModalCourse, setLinksModalCourse] = React.useState(null);
 
     React.useEffect(() => {
         const fetchCourses = async () => {
@@ -129,6 +133,11 @@ const LandingPage = () => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleVerMas = (course) => {
+        setLinksModalCourse(course);
+        setOpenLinksModal(true);
     };
 
     return (
@@ -310,22 +319,40 @@ const LandingPage = () => {
                                                         </Box>
                                                     )}
                                                 </Box>
-                                                <Button
-                                                    variant="contained"
-                                                    color="secondary"
-                                                    fullWidth
-                                                    onClick={() => handleRegisterClick(course)}
-                                                    sx={{
-                                                        mt: 2,
-                                                        borderRadius: 2,
-                                                        py: 1.2,
-                                                        fontWeight: 600,
-                                                        textTransform: 'none',
-                                                        fontSize: '1rem'
-                                                    }}
-                                                >
-                                                    Inscribirse Ahora
-                                                </Button>
+                                                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                                                    {(course.whatsapp_link || course.platform_link) && (
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="primary"
+                                                            fullWidth
+                                                            onClick={() => handleVerMas(course)}
+                                                            sx={{
+                                                                borderRadius: 2,
+                                                                py: 1.2,
+                                                                fontWeight: 600,
+                                                                textTransform: 'none',
+                                                                fontSize: '0.95rem'
+                                                            }}
+                                                        >
+                                                            Ver más
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="contained"
+                                                        color="secondary"
+                                                        fullWidth
+                                                        onClick={() => handleRegisterClick(course)}
+                                                        sx={{
+                                                            borderRadius: 2,
+                                                            py: 1.2,
+                                                            fontWeight: 600,
+                                                            textTransform: 'none',
+                                                            fontSize: '1rem'
+                                                        }}
+                                                    >
+                                                        Inscribirse Ahora
+                                                    </Button>
+                                                </Box>
                                             </CardContent>
                                         </MainCard>
                                     </Box>
@@ -567,6 +594,48 @@ const LandingPage = () => {
                         </Box>
                     )}
                 </DialogContent>
+            </Dialog>
+
+            {/* Links Modal */}
+            <Dialog open={openLinksModal} onClose={() => setOpenLinksModal(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>
+                    {linksModalCourse?.subject_details?.name}
+                    <Typography variant="body2" color="textSecondary">
+                        Paralelo {linksModalCourse?.parallel}
+                    </Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Box display="flex" flexDirection="column" gap={2} pt={1}>
+                        {linksModalCourse?.whatsapp_link && (
+                            <Button
+                                variant="contained"
+                                href={linksModalCourse.whatsapp_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fullWidth
+                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', background: '#25D366', '&:hover': { background: '#1ebe5d' } }}
+                            >
+                                💬 Unirse al grupo de WhatsApp
+                            </Button>
+                        )}
+                        {linksModalCourse?.platform_link && (
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                href={linksModalCourse.platform_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fullWidth
+                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none' }}
+                            >
+                                🎓 Ir a la Plataforma Virtual
+                            </Button>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenLinksModal(false)} color="primary">Cerrar</Button>
+                </DialogActions>
             </Dialog>
         </Box >
     );

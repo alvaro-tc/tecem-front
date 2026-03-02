@@ -27,7 +27,7 @@ import {
     Switch,
     Chip
 } from '@material-ui/core';
-import { IconSearch, IconPlus, IconEdit, IconTrash, IconBrandWhatsapp, IconUsers } from '@tabler/icons';
+import { IconSearch, IconPlus, IconEdit, IconTrash, IconBrandWhatsapp, IconUsers, IconLink } from '@tabler/icons';
 import MainCard from '../../../ui-component/cards/MainCard';
 import axios from 'axios';
 import configData from '../../../config';
@@ -153,7 +153,8 @@ const Courses = () => {
         const matchesSearch = (course.subject_details && course.subject_details.name.toLowerCase().includes(search.toLowerCase())) ||
             (course.subject_details && course.subject_details.code.toLowerCase().includes(search.toLowerCase())) ||
             (course.parallel && course.parallel.toLowerCase().includes(search.toLowerCase())) ||
-            (course.teacher_name && course.teacher_name.toLowerCase().includes(search.toLowerCase()));
+            (course.teacher_name && course.teacher_name.toLowerCase().includes(search.toLowerCase())) ||
+            (course.course_identifier && course.course_identifier.toLowerCase().includes(search.toLowerCase()));
 
         const isArchived = course.subject_details?.archived;
 
@@ -250,11 +251,13 @@ const Courses = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
+                            <TableCell>Identificador</TableCell>
                             <TableCell>Materia</TableCell>
                             <TableCell>Paralelo</TableCell>
                             <TableCell>Docente</TableCell>
                             <TableCell>Horario</TableCell>
                             <TableCell>WhatsApp</TableCell>
+                            <TableCell>Plataforma</TableCell>
                             <TableCell>Estado</TableCell>
                             <TableCell>Acciones</TableCell>
                         </TableRow>
@@ -264,6 +267,11 @@ const Courses = () => {
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((course) => (
                                 <TableRow key={course.id} hover>
+                                    <TableCell>
+                                        {course.course_identifier ? (
+                                            <Chip label={course.course_identifier} size="small" variant="outlined" color="primary" />
+                                        ) : '-'}
+                                    </TableCell>
                                     <TableCell>
                                         {course.subject_details?.name} ({course.subject_details?.code})
                                     </TableCell>
@@ -278,7 +286,7 @@ const Courses = () => {
                                     </TableCell>
                                     <TableCell>
                                         {course.whatsapp_link ? (
-                                            <Tooltip title="Abrir Link">
+                                            <Tooltip title="Abrir Link WhatsApp">
                                                 <IconButton
                                                     component={Link}
                                                     href={course.whatsapp_link}
@@ -288,6 +296,22 @@ const Courses = () => {
                                                     color="primary"
                                                 >
                                                     <IconBrandWhatsapp />
+                                                </IconButton>
+                                            </Tooltip>
+                                        ) : '-'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {course.platform_link ? (
+                                            <Tooltip title="Abrir Plataforma Virtual">
+                                                <IconButton
+                                                    component={Link}
+                                                    href={course.platform_link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    size="small"
+                                                    color="secondary"
+                                                >
+                                                    <IconLink />
                                                 </IconButton>
                                             </Tooltip>
                                         ) : '-'}
@@ -324,7 +348,7 @@ const Courses = () => {
                             ))}
                         {filteredCourses.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={7} align="center">
+                                <TableCell colSpan={9} align="center">
                                     No se encontraron registros
                                 </TableCell>
                             </TableRow>
