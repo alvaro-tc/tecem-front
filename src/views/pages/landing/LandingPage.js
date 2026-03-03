@@ -264,7 +264,7 @@ const LandingPage = () => {
                                                 position: 'relative',
                                                 overflow: 'hidden',
                                                 borderRadius: 4,
-                                                height: '480px',
+                                                height: '500px',
                                                 transition: 'all 0.3s ease',
                                                 '&:hover': {
                                                     transform: 'translateY(-8px)',
@@ -319,13 +319,35 @@ const LandingPage = () => {
                                                         </Box>
                                                     )}
                                                 </Box>
-                                                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                                                    {(course.whatsapp_link || course.platform_link) && (
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2, minHeight: '106px', justifyContent: 'flex-end' }}>
+                                                    {course.whatsapp_link && (
+                                                        <Button
+                                                            variant="contained"
+                                                            href={course.whatsapp_link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            fullWidth
+                                                            sx={{
+                                                                borderRadius: 2,
+                                                                py: 1.2,
+                                                                fontWeight: 600,
+                                                                textTransform: 'none',
+                                                                fontSize: '0.95rem',
+                                                                background: '#25D366',
+                                                                '&:hover': { background: '#1ebe5d' }
+                                                            }}
+                                                        >
+                                                            💬 Unirse al grupo de WhatsApp
+                                                        </Button>
+                                                    )}
+                                                    {course.platform_link && (
                                                         <Button
                                                             variant="outlined"
                                                             color="primary"
+                                                            href={course.platform_link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
                                                             fullWidth
-                                                            onClick={() => handleVerMas(course)}
                                                             sx={{
                                                                 borderRadius: 2,
                                                                 py: 1.2,
@@ -334,24 +356,9 @@ const LandingPage = () => {
                                                                 fontSize: '0.95rem'
                                                             }}
                                                         >
-                                                            Ver más
+                                                            🎓 Entrar a la Plataforma Virtual
                                                         </Button>
                                                     )}
-                                                    <Button
-                                                        variant="contained"
-                                                        color="secondary"
-                                                        fullWidth
-                                                        onClick={() => handleRegisterClick(course)}
-                                                        sx={{
-                                                            borderRadius: 2,
-                                                            py: 1.2,
-                                                            fontWeight: 600,
-                                                            textTransform: 'none',
-                                                            fontSize: '1rem'
-                                                        }}
-                                                    >
-                                                        Inscribirse Ahora
-                                                    </Button>
                                                 </Box>
                                             </CardContent>
                                         </MainCard>
