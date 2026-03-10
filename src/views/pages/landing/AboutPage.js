@@ -45,7 +45,7 @@ const AboutPage = () => {
                 }}
             >
                 <LandingHeader />
-                <Box sx={{ pt: 12 }} />
+                <Box sx={{ pt: { xs: 6, md: 12 } }} />
 
                 {/* Decorative shapes */}
                 <Box sx={{ position: 'absolute', top: -50, right: -50, width: 300, height: 300, borderRadius: '50%', background: theme.palette.primary.light, opacity: 0.2, zIndex: 0 }} />

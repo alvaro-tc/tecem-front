@@ -17,6 +17,7 @@ import {
 
 // project imports
 import LandingHeader from './LandingHeader';
+import LandingFooter from './LandingFooter';
 import axios from 'axios';
 import configData from '../../../config';
 import MainCard from '../../../ui-component/cards/MainCard';
@@ -49,15 +50,26 @@ const PublicProjects = () => {
     );
 
     return (
-        <Box sx={{ minHeight: '100vh', backgroundColor: theme.palette.background.default, pt: 12 }}>
+        <Box sx={{ minHeight: '100vh' }}>
+            <Box
+                sx={{
+                    background: `linear-gradient(135deg, ${theme.palette.secondary.light} 0%, ${theme.palette.background.default} 100%)`,
+                    pt: 0,
+                    pb: 8,
+                    minHeight: '100vh',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
             <LandingHeader />
+            <Box sx={{ pt: { xs: 6, md: 10 } }} />
 
             <Container maxWidth="lg">
-                <Box sx={{ textAlign: 'center', mb: 8 }}>
-                    <Typography variant="h2" gutterBottom color="primary" sx={{ fontSize: '3rem', fontWeight: 700 }}>
+                <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 8 } }}>
+                    <Typography variant="h2" gutterBottom color="primary" sx={{ fontSize: { xs: '2rem', md: '3rem' }, fontWeight: 700 }}>
                         Proyectos Disponibles
                     </Typography>
-                    <Typography variant="h4" color="textSecondary" sx={{ fontWeight: 400 }}>
+                    <Typography variant="h5" color="textSecondary" sx={{ fontWeight: 400, fontSize: { xs: '1rem', md: '1.25rem' } }}>
                         Encuentra tu proyecto e inscribe a tu grupo
                     </Typography>
                 </Box>
@@ -173,12 +185,9 @@ const PublicProjects = () => {
                 )}
             </Container>
 
-            {/* Simple Footer */}
-            <Box sx={{ textAlign: 'center', py: 4, margin: 4, borderTop: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" color="textSecondary">
-                    © 2026 Plataforma Emergentes
-                </Typography>
             </Box>
+            {/* Footer */}
+            <LandingFooter />
         </Box>
     );
 };

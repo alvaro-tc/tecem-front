@@ -86,7 +86,7 @@ const LandingPage = () => {
             <Box
                 sx={{
                     pt: 0,
-                    pb: 12,
+                    pb: { xs: 6, md: 12 },
                     background: `linear-gradient(135deg, ${theme.palette.secondary.light} 0%, ${theme.palette.background.default} 100%)`,
                     borderRadius: '0 0 50% 50% / 4%',
                     position: 'relative',
@@ -94,7 +94,7 @@ const LandingPage = () => {
                 }}
             >
                 <LandingHeader />
-                <Box sx={{ pt: 12 }} />
+                <Box sx={{ pt: { xs: 6, md: 12 } }} />
                 {/* Abstract Background Shapes */}
                 <Box sx={{ position: 'absolute', top: -100, right: -100, width: 400, height: 400, borderRadius: '50%', background: theme.palette.primary.light, opacity: 0.3, zIndex: 0 }} />
                 <Box sx={{ position: 'absolute', bottom: 50, left: -50, width: 200, height: 200, borderRadius: '50%', background: theme.palette.secondary.main, opacity: 0.1, zIndex: 0 }} />
@@ -115,10 +115,14 @@ const LandingPage = () => {
                                 Bienvenido a la <br />
                                 <Box component="span" sx={{ color: theme.palette.primary.main }}>Plataforma EMERGENTES</Box>
                             </Typography>
-                            <Typography variant="h3" color="textSecondary" sx={{ mb: 4, fontWeight: 400, maxWidth: 600 }}>
+                            <Typography variant="h5" color="textSecondary" sx={{ mb: 4, fontWeight: 400, maxWidth: 600, fontSize: { xs: '1rem', md: '1.25rem' } }}>
                                 Accede a nuestras funcionalidades desde el panel de administración
                             </Typography>
-                            <Stack direction="row" spacing={2}>
+                            <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={2}
+                                sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
+                            >
                                 <AnimateButton>
                                     <Button
                                         component={RouterLink}
@@ -126,7 +130,7 @@ const LandingPage = () => {
                                         variant="contained"
                                         color="secondary"
                                         size="large"
-                                        sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: '1.1rem' }}
+                                        sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: { xs: '1rem', md: '1.1rem' }, width: { xs: '100%', sm: 'auto' } }}
                                     >
                                         Iniciar Sesión
                                     </Button>
@@ -137,7 +141,7 @@ const LandingPage = () => {
                                     variant="outlined"
                                     color="primary"
                                     size="large"
-                                    sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: '1.1rem' }}
+                                    sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: { xs: '1rem', md: '1.1rem' }, width: { xs: '100%', sm: 'auto' } }}
                                 >
                                     Ver Cursos
                                 </Button>
