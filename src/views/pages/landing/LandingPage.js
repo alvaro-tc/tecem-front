@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@material-ui/core/styles';
-import { Button, Grid, Typography, Container, Box, Stack, Card, CardContent, CircularProgress, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Divider } from '@material-ui/core';
+import { Button, Grid, Typography, Container, Box, Stack, Card, CardContent, CircularProgress } from '@material-ui/core';
 
 // project imports
 import LandingHeader from './LandingHeader';
@@ -23,23 +23,7 @@ const LandingPage = () => {
     const [loading, setLoading] = React.useState(true);
     const [landingConfig, setLandingConfig] = React.useState(null);
 
-    // Registration modal state
-    const [openModal, setOpenModal] = React.useState(false);
-    const [selectedCourse, setSelectedCourse] = React.useState(null);
-    const [form, setForm] = React.useState({
-        ci: '',
-        first_name: '',
-        paternal_surname: '',
-        maternal_surname: '',
-        email: '',
-        cellphone: ''
-    });
-    const [submitting, setSubmitting] = React.useState(false);
-    const [success, setSuccess] = React.useState(false);
 
-    // Links modal state
-    const [openLinksModal, setOpenLinksModal] = React.useState(false);
-    const [linksModalCourse, setLinksModalCourse] = React.useState(null);
 
     React.useEffect(() => {
         const fetchCourses = async () => {
@@ -94,51 +78,7 @@ const LandingPage = () => {
         ]
     };
 
-    const handleRegisterClick = (course) => {
-        setSelectedCourse(course);
-        setOpenModal(true);
-        setSuccess(false);
-        setForm({
-            ci: '',
-            first_name: '',
-            paternal_surname: '',
-            maternal_surname: '',
-            email: '',
-            cellphone: ''
-        });
-    };
 
-    const handleCloseModal = () => {
-        setOpenModal(false);
-        setSelectedCourse(null);
-    };
-
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            const payload = {
-                course: selectedCourse.id,
-                ...form
-            };
-            await axios.post(`${configData.API_SERVER}student-course-registration/submit_request/`, payload);
-            setSuccess(true);
-        } catch (error) {
-            console.error("Error submitting registration:", error);
-            alert('Error al enviar la solicitud. Por favor intenta de nuevo.');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleVerMas = (course) => {
-        setLinksModalCourse(course);
-        setOpenLinksModal(true);
-    };
 
     return (
         <Box sx={{ minHeight: '100vh' }}>
@@ -146,7 +86,7 @@ const LandingPage = () => {
             <Box
                 sx={{
                     pt: 0,
-                    pb: 12,
+                    pb: { xs: 6, md: 12 },
                     background: `linear-gradient(135deg, ${theme.palette.secondary.light} 0%, ${theme.palette.background.default} 100%)`,
                     borderRadius: '0 0 50% 50% / 4%',
                     position: 'relative',
@@ -154,7 +94,7 @@ const LandingPage = () => {
                 }}
             >
                 <LandingHeader />
-                <Box sx={{ pt: 12 }} />
+                <Box sx={{ pt: { xs: 6, md: 12 } }} />
                 {/* Abstract Background Shapes */}
                 <Box sx={{ position: 'absolute', top: -100, right: -100, width: 400, height: 400, borderRadius: '50%', background: theme.palette.primary.light, opacity: 0.3, zIndex: 0 }} />
                 <Box sx={{ position: 'absolute', bottom: 50, left: -50, width: 200, height: 200, borderRadius: '50%', background: theme.palette.secondary.main, opacity: 0.1, zIndex: 0 }} />
@@ -175,10 +115,14 @@ const LandingPage = () => {
                                 Bienvenido a la <br />
                                 <Box component="span" sx={{ color: theme.palette.primary.main }}>Plataforma EMERGENTES</Box>
                             </Typography>
-                            <Typography variant="h3" color="textSecondary" sx={{ mb: 4, fontWeight: 400, maxWidth: 600 }}>
+                            <Typography variant="h5" color="textSecondary" sx={{ mb: 4, fontWeight: 400, maxWidth: 600, fontSize: { xs: '1rem', md: '1.25rem' } }}>
                                 Accede a nuestras funcionalidades desde el panel de administración
                             </Typography>
-                            <Stack direction="row" spacing={2}>
+                            <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={2}
+                                sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
+                            >
                                 <AnimateButton>
                                     <Button
                                         component={RouterLink}
@@ -186,7 +130,7 @@ const LandingPage = () => {
                                         variant="contained"
                                         color="secondary"
                                         size="large"
-                                        sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: '1.1rem' }}
+                                        sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: { xs: '1rem', md: '1.1rem' }, width: { xs: '100%', sm: 'auto' } }}
                                     >
                                         Iniciar Sesión
                                     </Button>
@@ -197,7 +141,7 @@ const LandingPage = () => {
                                     variant="outlined"
                                     color="primary"
                                     size="large"
-                                    sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: '1.1rem' }}
+                                    sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: { xs: '1rem', md: '1.1rem' }, width: { xs: '100%', sm: 'auto' } }}
                                 >
                                     Ver Cursos
                                 </Button>
@@ -460,191 +404,7 @@ const LandingPage = () => {
             {/* Footer */}
             <LandingFooter />
 
-            {/* Registration Dialog */}
-            <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ textAlign: 'center', fontWeight: 700, fontSize: '1.5rem', pb: 1 }}>
-                    Inscripción al Curso
-                </DialogTitle>
-                <DialogContent>
-                    {selectedCourse && (
-                        <Box mb={3} p={3} sx={{
-                            bgcolor: theme.palette.primary.light + '20',
-                            borderRadius: 3,
-                            textAlign: 'center',
-                            border: `2px solid ${theme.palette.primary.main}30`
-                        }}>
-                            <Typography variant="h5" fontWeight="bold" color="primary" gutterBottom>
-                                {selectedCourse.subject_details?.name}
-                            </Typography>
-                            <Typography variant="body1" color="textSecondary" sx={{ mb: 1 }}>
-                                {selectedCourse.subject_details?.code}
-                            </Typography>
-                            <Chip
-                                label={`Paralelo ${selectedCourse.parallel}`}
-                                color="secondary"
-                                sx={{ fontWeight: 600 }}
-                            />
-                        </Box>
-                    )}
-
-                    {!success ? (
-                        <form onSubmit={handleSubmit}>
-                            <Grid container spacing={2.5}>
-                                <Grid item xs={12}>
-                                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1, fontWeight: 500 }}>
-                                        Por favor completa tus datos para solicitar la inscripción
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Carnet de Identidad"
-                                        name="ci"
-                                        value={form.ci}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Nombre"
-                                        name="first_name"
-                                        value={form.first_name}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Apellido Paterno"
-                                        name="paternal_surname"
-                                        value={form.paternal_surname}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Apellido Materno"
-                                        name="maternal_surname"
-                                        value={form.maternal_surname}
-                                        onChange={handleChange}
-                                        variant="outlined"
-                                    />
-                                </Grid>
-                                <Grid item xs={12}>
-                                    <TextField
-                                        fullWidth
-                                        label="Correo Electrónico"
-                                        name="email"
-                                        type="email"
-                                        value={form.email}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
-                                </Grid>
-                                <Grid item xs={12}>
-                                    <TextField
-                                        fullWidth
-                                        label="Teléfono/Celular"
-                                        name="cellphone"
-                                        value={form.cellphone}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
-                                </Grid>
-                            </Grid>
-                            <DialogActions sx={{ px: 0, pt: 3, gap: 1 }}>
-                                <Button
-                                    onClick={handleCloseModal}
-                                    variant="outlined"
-                                    sx={{ borderRadius: 2, px: 3 }}
-                                >
-                                    Cancelar
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    variant="contained"
-                                    color="secondary"
-                                    disabled={submitting}
-                                    sx={{ borderRadius: 2, px: 4, fontWeight: 600 }}
-                                >
-                                    {submitting ? 'Enviando...' : 'Enviar Solicitud'}
-                                </Button>
-                            </DialogActions>
-                        </form>
-                    ) : (
-                        <Box textAlign="center" py={4}>
-                            <Typography variant="h1" sx={{ fontSize: '4rem', mb: 2 }}>✅</Typography>
-                            <Typography variant="h5" gutterBottom color="primary" fontWeight={600}>
-                                ¡Solicitud Enviada!
-                            </Typography>
-                            <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
-                                Tu solicitud de inscripción ha sido enviada correctamente. Recibirás una confirmación pronto.
-                            </Typography>
-                            <Button
-                                onClick={handleCloseModal}
-                                variant="contained"
-                                color="secondary"
-                                sx={{ borderRadius: 2, px: 4, fontWeight: 600 }}
-                            >
-                                Cerrar
-                            </Button>
-                        </Box>
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            {/* Links Modal */}
-            <Dialog open={openLinksModal} onClose={() => setOpenLinksModal(false)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ fontWeight: 700 }}>
-                    {linksModalCourse?.subject_details?.name}
-                    <Typography variant="body2" color="textSecondary">
-                        Paralelo {linksModalCourse?.parallel}
-                    </Typography>
-                </DialogTitle>
-                <DialogContent>
-                    <Box display="flex" flexDirection="column" gap={2} pt={1}>
-                        {linksModalCourse?.whatsapp_link && (
-                            <Button
-                                variant="contained"
-                                href={linksModalCourse.whatsapp_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                fullWidth
-                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', background: '#25D366', '&:hover': { background: '#1ebe5d' } }}
-                            >
-                                💬 Unirse al grupo de WhatsApp
-                            </Button>
-                        )}
-                        {linksModalCourse?.platform_link && (
-                            <Button
-                                variant="outlined"
-                                color="primary"
-                                href={linksModalCourse.platform_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                fullWidth
-                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none' }}
-                            >
-                                🎓 Ir a la Plataforma Virtual
-                            </Button>
-                        )}
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenLinksModal(false)} color="primary">Cerrar</Button>
-                </DialogActions>
-            </Dialog>
-        </Box >
+        </Box>
     );
 };
 

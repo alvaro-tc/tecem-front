@@ -6,7 +6,6 @@ import {
     Grid,
     Typography,
     Container,
-    Card,
     CardContent,
     CircularProgress,
     Box,
@@ -16,22 +15,19 @@ import {
     DialogTitle,
     DialogActions,
     TextField,
-    MenuItem,
     Alert,
-    Snackbar,
-    IconButton
+    Snackbar
 } from '@material-ui/core';
-import { IconBook, IconCheck, IconX } from '@tabler/icons';
+import { IconBook } from '@tabler/icons';
 
 // project imports
 import LandingHeader from './LandingHeader';
 import axios from 'axios';
 import configData from '../../../config';
 import MainCard from '../../../ui-component/cards/MainCard';
-import { formatSchedule, getScheduleItems } from '../../../utils/scheduleUtils';
+import { getScheduleItems } from '../../../utils/scheduleUtils';
 
 const PublicCourses = () => {
-    // Force rebuild
     const theme = useTheme();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -50,15 +46,6 @@ const PublicCourses = () => {
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-
-    // Links modal state
-    const [openLinksModal, setOpenLinksModal] = useState(false);
-    const [linksModalCourse, setLinksModalCourse] = useState(null);
-
-    const handleVerMas = (course) => {
-        setLinksModalCourse(course);
-        setOpenLinksModal(true);
-    };
 
     useEffect(() => {
         const fetchCourses = async () => {
@@ -117,14 +104,10 @@ const PublicCourses = () => {
         }
     };
 
-    // Helper function to construct full image URL
     const getImageUrl = (imagePath) => {
         if (!imagePath) return null;
-        if (imagePath.startsWith('http')) return imagePath; // Already absolute
-
-        // Remove '/api/' from API_SERVER to get base host
+        if (imagePath.startsWith('http')) return imagePath;
         const baseHost = configData.API_SERVER.replace(/\/api\/$/, '');
-        // Ensure imagePath starts with /
         const path = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
         return `${baseHost}${path}`;
     };
@@ -148,7 +131,7 @@ const PublicCourses = () => {
                             Cursos Disponibles
                         </Typography>
                         <Typography variant="h4" color="textSecondary" sx={{ fontWeight: 400 }}>
-                            Explora e inscríbete en las materias habilitadas para este periodo
+                            Explora los cursos disponibles para este periodo
                         </Typography>
                     </Box>
 
@@ -165,14 +148,16 @@ const PublicCourses = () => {
                                             border={false}
                                             boxShadow
                                             shadow={theme.shadows[10]}
+                                            content={false}
                                             sx={{
                                                 height: '100%',
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 transition: 'transform 0.3s',
-                                                '&:hover': { transform: 'translateY(-8px)' }
+                                                '&:hover': { transform: 'translateY(-8px)', boxShadow: theme.shadows[12] }
                                             }}
                                         >
+                                            {/* Course Image */}
                                             <Box sx={{ position: 'relative' }}>
                                                 {course.image ? (
                                                     <img
@@ -189,32 +174,37 @@ const PublicCourses = () => {
                                                 ) : (
                                                     <Box sx={{
                                                         height: '180px',
-                                                        background: theme.palette.secondary.light,
+                                                        background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.primary.main} 100%)`,
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         borderTopLeftRadius: '8px',
                                                         borderTopRightRadius: '8px'
                                                     }}>
-                                                        <IconBook size={64} color={theme.palette.secondary.dark} />
+                                                        <IconBook size={64} color="#fff" />
                                                     </Box>
                                                 )}
                                             </Box>
-                                            <CardContent sx={{ flexGrow: 1, textAlign: 'center', pt: 2, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+
+                                            {/* Card Content */}
+                                            <CardContent sx={{ flexGrow: 1, textAlign: 'center', pt: 2, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: 3 }}>
                                                 <Box>
-                                                    {/* Subject Name with Code */}
-                                                    <Typography variant="h3" sx={{ mb: 2, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.2 }}>
-                                                        {course.subject_details?.name} ({course.subject_details?.code})
+                                                    <Typography variant="h3" sx={{ mb: 1, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.2 }}>
+                                                        {course.subject_details?.name}
                                                     </Typography>
-
-                                                    {/* Parallel */}
-                                                    <Typography variant="body1" sx={{ color: theme.palette.grey[600], fontWeight: 500, mb: 2 }}>
-                                                        Paralelo {course.parallel}
+                                                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1, fontWeight: 500 }}>
+                                                        {course.subject_details?.code}
                                                     </Typography>
+                                                    <Chip
+                                                        label={`Paralelo ${course.parallel}`}
+                                                        color="secondary"
+                                                        size="small"
+                                                        sx={{ mb: 2, fontWeight: 600 }}
+                                                    />
 
-                                                    {/* Schedule info */}
+                                                    {/* Schedule */}
                                                     {getScheduleItems(course.schedule).length > 0 && (
-                                                        <Box sx={{ mb: 2, p: 1, bgcolor: theme.palette.grey[50], borderRadius: 2 }}>
+                                                        <Box sx={{ mb: 2, p: 1.5, bgcolor: theme.palette.grey[50], borderRadius: 2 }}>
                                                             {getScheduleItems(course.schedule).map((item, idx) => (
                                                                 <Typography key={idx} variant="caption" display="block" color="textSecondary" sx={{ fontWeight: 500 }}>
                                                                     {item}
@@ -224,29 +214,59 @@ const PublicCourses = () => {
                                                     )}
                                                 </Box>
 
-                                                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                                                    {(course.whatsapp_link || course.platform_link) && (
+                                                {/* Action Buttons */}
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+                                                    {course.whatsapp_link && (
                                                         <Button
+                                                            variant="contained"
+                                                            href={course.whatsapp_link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
                                                             fullWidth
-                                                            variant="outlined"
-                                                            color="primary"
-                                                            size="large"
-                                                            sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '0.95rem' }}
-                                                            onClick={() => handleVerMas(course)}
+                                                            sx={{
+                                                                borderRadius: 2,
+                                                                py: 1.2,
+                                                                fontWeight: 600,
+                                                                textTransform: 'none',
+                                                                fontSize: '0.95rem',
+                                                                background: '#25D366',
+                                                                '&:hover': { background: '#1ebe5d' }
+                                                            }}
                                                         >
-                                                            Ver más
+                                                            💬 Unirse al grupo de WhatsApp
                                                         </Button>
                                                     )}
-                                                    <Button
-                                                        fullWidth
-                                                        variant="contained"
-                                                        color="secondary"
-                                                        size="large"
-                                                        sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '1rem' }}
-                                                        onClick={() => handleRegisterClick(course)}
-                                                    >
-                                                        Inscribirse Ahora
-                                                    </Button>
+                                                    {course.platform_link && (
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="primary"
+                                                            href={course.platform_link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            fullWidth
+                                                            sx={{
+                                                                borderRadius: 2,
+                                                                py: 1.2,
+                                                                fontWeight: 600,
+                                                                textTransform: 'none',
+                                                                fontSize: '0.95rem'
+                                                            }}
+                                                        >
+                                                            🎓 Entrar a la Plataforma Virtual
+                                                        </Button>
+                                                    )}
+                                                    {course.is_registration_open && (
+                                                        <Button
+                                                            variant="contained"
+                                                            color="secondary"
+                                                            fullWidth
+                                                            size="large"
+                                                            sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '1rem' }}
+                                                            onClick={() => handleRegisterClick(course)}
+                                                        >
+                                                            ✏️ Inscribirse Ahora
+                                                        </Button>
+                                                    )}
                                                 </Box>
                                             </CardContent>
                                         </MainCard>
@@ -255,10 +275,14 @@ const PublicCourses = () => {
                             ) : (
                                 <Grid item xs={12}>
                                     <Box textAlign="center" py={10}>
-                                        <Typography variant="h3" color="textSecondary">
-                                            No hay cursos abiertos para inscripción en este momento.
+                                        <Typography variant="h1" sx={{ fontSize: '5rem', mb: 2, opacity: 0.3 }}>📚</Typography>
+                                        <Typography variant="h4" color="textSecondary" gutterBottom>
+                                            No hay cursos disponibles en este momento.
                                         </Typography>
-                                        <Button component={RouterLink} to="/" variant="text" sx={{ mt: 2 }}>
+                                        <Typography variant="body1" color="textSecondary" sx={{ mb: 4 }}>
+                                            ¡Mantente atento! Pronto habrá nuevos cursos disponibles.
+                                        </Typography>
+                                        <Button component={RouterLink} to="/" variant="outlined" color="primary" sx={{ borderRadius: 2, px: 4 }}>
                                             Volver al inicio
                                         </Button>
                                     </Box>
@@ -295,13 +319,11 @@ const PublicCourses = () => {
                             <Typography variant="body1" color="textSecondary" sx={{ mb: 1 }}>
                                 {selectedCourse.subject_details?.code}
                             </Typography>
-                            <Box mt={1} display="flex" gap={1} justifyContent="center">
+                            <Box mt={1} display="flex" gap={1} justifyContent="center" flexWrap="wrap">
                                 <Chip label={`Paralelo ${selectedCourse.parallel}`} color="secondary" sx={{ fontWeight: 600 }} />
-                                <Box display="flex" flexDirection="column" gap={0.5}>
-                                    {getScheduleItems(selectedCourse.schedule).map((item, idx) => (
-                                        <Chip key={idx} label={item} size="small" />
-                                    ))}
-                                </Box>
+                                {getScheduleItems(selectedCourse.schedule).map((item, idx) => (
+                                    <Chip key={idx} label={item} size="small" />
+                                ))}
                             </Box>
                         </Box>
                     )}
@@ -315,87 +337,29 @@ const PublicCourses = () => {
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Carnet de Identidad"
-                                        name="ci"
-                                        value={form.ci}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
+                                    <TextField fullWidth label="Carnet de Identidad" name="ci" value={form.ci} onChange={handleChange} required variant="outlined" />
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Nombre"
-                                        name="first_name"
-                                        value={form.first_name}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
+                                    <TextField fullWidth label="Nombre" name="first_name" value={form.first_name} onChange={handleChange} required variant="outlined" />
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Apellido Paterno"
-                                        name="paternal_surname"
-                                        value={form.paternal_surname}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
+                                    <TextField fullWidth label="Apellido Paterno" name="paternal_surname" value={form.paternal_surname} onChange={handleChange} required variant="outlined" />
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Apellido Materno"
-                                        name="maternal_surname"
-                                        value={form.maternal_surname}
-                                        onChange={handleChange}
-                                        variant="outlined"
-                                    />
+                                    <TextField fullWidth label="Apellido Materno" name="maternal_surname" value={form.maternal_surname} onChange={handleChange} variant="outlined" />
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <TextField
-                                        fullWidth
-                                        label="Correo Electrónico"
-                                        name="email"
-                                        type="email"
-                                        value={form.email}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
+                                    <TextField fullWidth label="Correo Electrónico" name="email" type="email" value={form.email} onChange={handleChange} required variant="outlined" />
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <TextField
-                                        fullWidth
-                                        label="Teléfono/Celular"
-                                        name="cellphone"
-                                        value={form.cellphone}
-                                        onChange={handleChange}
-                                        required
-                                        variant="outlined"
-                                    />
+                                    <TextField fullWidth label="Teléfono/Celular" name="cellphone" value={form.cellphone} onChange={handleChange} required variant="outlined" />
                                 </Grid>
                             </Grid>
                             <DialogActions sx={{ px: 0, pt: 3, gap: 1 }}>
-                                <Button
-                                    onClick={handleCloseModal}
-                                    variant="outlined"
-                                    sx={{ borderRadius: 2, px: 3 }}
-                                >
+                                <Button onClick={handleCloseModal} variant="outlined" sx={{ borderRadius: 2, px: 3 }}>
                                     Cancelar
                                 </Button>
-                                <Button
-                                    type="submit"
-                                    variant="contained"
-                                    color="secondary"
-                                    disabled={submitting}
-                                    sx={{ borderRadius: 2, px: 4, fontWeight: 600 }}
-                                >
+                                <Button type="submit" variant="contained" color="secondary" disabled={submitting} sx={{ borderRadius: 2, px: 4, fontWeight: 600 }}>
                                     {submitting ? 'Enviando...' : 'Enviar Solicitud'}
                                 </Button>
                             </DialogActions>
@@ -409,59 +373,12 @@ const PublicCourses = () => {
                             <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
                                 Tu solicitud de inscripción ha sido enviada correctamente. Recibirás una confirmación pronto.
                             </Typography>
-                            <Button
-                                onClick={handleCloseModal}
-                                variant="contained"
-                                color="secondary"
-                                sx={{ borderRadius: 2, px: 4, fontWeight: 600 }}
-                            >
+                            <Button onClick={handleCloseModal} variant="contained" color="secondary" sx={{ borderRadius: 2, px: 4, fontWeight: 600 }}>
                                 Cerrar
                             </Button>
                         </Box>
                     )}
                 </DialogContent>
-            </Dialog>
-
-            {/* Links Modal */}
-            <Dialog open={openLinksModal} onClose={() => setOpenLinksModal(false)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ fontWeight: 700 }}>
-                    {linksModalCourse?.subject_details?.name}
-                    <Typography variant="body2" color="textSecondary">
-                        Paralelo {linksModalCourse?.parallel}
-                    </Typography>
-                </DialogTitle>
-                <DialogContent>
-                    <Box display="flex" flexDirection="column" gap={2} pt={1}>
-                        {linksModalCourse?.whatsapp_link && (
-                            <Button
-                                variant="contained"
-                                href={linksModalCourse.whatsapp_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                fullWidth
-                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', background: '#25D366', '&:hover': { background: '#1ebe5d' } }}
-                            >
-                                💬 Unirse al grupo de WhatsApp
-                            </Button>
-                        )}
-                        {linksModalCourse?.platform_link && (
-                            <Button
-                                variant="outlined"
-                                color="primary"
-                                href={linksModalCourse.platform_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                fullWidth
-                                sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none' }}
-                            >
-                                🎓 Ir a la Plataforma Virtual
-                            </Button>
-                        )}
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenLinksModal(false)} color="primary">Cerrar</Button>
-                </DialogActions>
             </Dialog>
 
             {/* Snackbar Notifications */}
@@ -480,7 +397,7 @@ const PublicCourses = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </React.Fragment >
+        </React.Fragment>
     );
 };
 

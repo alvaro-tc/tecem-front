@@ -120,6 +120,7 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
             else formData.append('whatsapp_link', '');
             if (values.platform_link) formData.append('platform_link', values.platform_link);
             else formData.append('platform_link', '');
+            formData.append('is_visible', values.is_visible);
             formData.append('is_registration_open', values.is_registration_open);
 
             if (values.registration_start) formData.append('registration_start', values.registration_start);
@@ -176,6 +177,7 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                             scheduleList: parseSchedule(course ? course.schedule : ''),
                             whatsapp_link: course ? (course.whatsapp_link || '') : '',
                             platform_link: course ? (course.platform_link || '') : '',
+                            is_visible: course ? course.is_visible : false,
                             is_registration_open: course ? course.is_registration_open : false,
                             registration_start: course && course.registration_start ? course.registration_start.slice(0, 16) : '',
                             registration_end: course && course.registration_end ? course.registration_end.slice(0, 16) : '',
@@ -189,6 +191,7 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                             // scheduleList validation logic could be added here if strict
                             whatsapp_link: Yup.string().url('Debe ser una URL válida').nullable(),
                             platform_link: Yup.string().url('Debe ser una URL válida').nullable(),
+                            is_visible: Yup.boolean(),
                             is_registration_open: Yup.boolean(),
                             registration_start: Yup.string().nullable(),
                             registration_end: Yup.string().nullable()
@@ -360,7 +363,20 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                                         </Grid>
 
                                         <Grid item xs={12}>
-                                            <DialogTitle style={{ paddingLeft: 0 }}>Configuración de Inscripción</DialogTitle>
+                                            <DialogTitle style={{ paddingLeft: 0 }}>Configuración de Visibilidad e Inscripción</DialogTitle>
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Switch
+                                                        checked={values.is_visible}
+                                                        onChange={handleChange}
+                                                        name="is_visible"
+                                                        color="primary"
+                                                    />
+                                                }
+                                                label="Visible en página pública (landing page y cursos)"
+                                            />
                                         </Grid>
                                         <Grid item xs={12}>
                                             <FormControlLabel
@@ -372,7 +388,7 @@ const CourseDialog = ({ open, handleClose, course, onSave }) => {
                                                         color="secondary"
                                                     />
                                                 }
-                                                label="Inscripción Abierta"
+                                                label="Inscripción Abierta (muestra botón de inscribirse en la página de cursos)"
                                             />
                                         </Grid>
                                         {values.is_registration_open && (
