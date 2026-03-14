@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import {
     Grid, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    IconButton, TextField, Alert, Snackbar, Divider, InputAdornment,
+    IconButton, TextField, Alert, Snackbar, Divider, InputAdornment, TablePagination,
     Dialog, DialogTitle, DialogContent, DialogActions, Box, List, ListItem, ListItemText, ListItemSecondaryAction
 } from '@material-ui/core';
 import { Autocomplete } from '@material-ui/core'; // Standard Material UI Autocomplete
@@ -43,8 +43,10 @@ const Enrollments = () => {
     const [newStudentForm, setNewStudentForm] = useState({ ci_number: '', first_name: '', paternal_surname: '', maternal_surname: '', email: '', phone: '' });
     const [enrollNewLoading, setEnrollNewLoading] = useState(false);
 
-    // Table search filter
+    // Table search + pagination
     const [tableSearch, setTableSearch] = useState('');
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
 
     // Edit student dialog
     const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -302,39 +304,13 @@ const Enrollments = () => {
             {/* Enrollment Toolbar */}
             <Grid container spacing={2} alignItems="center" style={{ marginBottom: 24 }}>
                 <Grid item style={{ minWidth: 280 }}>
-                    <Autocomplete
+                    <TextField
                         id="table-student-search"
-                        options={enrollments}
-                        getOptionLabel={(option) =>
-                            typeof option === 'string' ? option :
-                            `${option.student_details?.paternal_surname || ''} ${option.student_details?.maternal_surname || ''} ${option.student_details?.first_name || ''} — CI: ${option.student_details?.ci_number || ''}`
-                        }
-                        filterOptions={(options, state) => {
-                            const q = state.inputValue.toLowerCase();
-                            if (!q) return options;
-                            return options.filter(e => {
-                                const s = e.student_details || {};
-                                return (
-                                    (s.ci_number || '').toLowerCase().includes(q) ||
-                                    (s.paternal_surname || '').toLowerCase().includes(q) ||
-                                    (s.maternal_surname || '').toLowerCase().includes(q) ||
-                                    (s.first_name || '').toLowerCase().includes(q) ||
-                                    (s.email || '').toLowerCase().includes(q)
-                                );
-                            });
-                        }}
-                        onInputChange={(event, newValue) => setTableSearch(newValue)}
-                        onChange={(event, newValue) => setTableSearch(newValue ? (newValue.student_details?.ci_number || '') : '')}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Buscar en el paralelo"
-                                variant="outlined"
-                                fullWidth
-                            />
-                        )}
-                        clearOnEscape
-                        freeSolo
+                        label="Buscar en el paralelo"
+                        variant="outlined"
+                        fullWidth
+                        value={tableSearch}
+                        onChange={(e) => setTableSearch(e.target.value)}
                     />
                 </Grid>
                 <Grid item>
@@ -430,9 +406,9 @@ const Enrollments = () => {
                                     (s.first_name || '').toLowerCase().includes(q) ||
                                     (s.email || '').toLowerCase().includes(q)
                                 );
-                            }).map((enrollment, index) => (
+                            }).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((enrollment, index) => (
                                 <TableRow key={enrollment.id}>
-                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                                     <TableCell>{enrollment.student_details?.ci_number || 'N/A'}</TableCell>
                                     <TableCell>{enrollment.student_details?.paternal_surname}</TableCell>
                                     <TableCell>{enrollment.student_details?.maternal_surname}</TableCell>
@@ -453,6 +429,27 @@ const Enrollments = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+            <TablePagination
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                component="div"
+                count={enrollments.filter(e => {
+                    if (!tableSearch) return true;
+                    const q = tableSearch.toLowerCase();
+                    const s = e.student_details || {};
+                    return (
+                        (s.ci_number || '').toLowerCase().includes(q) ||
+                        (s.paternal_surname || '').toLowerCase().includes(q) ||
+                        (s.maternal_surname || '').toLowerCase().includes(q) ||
+                        (s.first_name || '').toLowerCase().includes(q) ||
+                        (s.email || '').toLowerCase().includes(q)
+                    );
+                }).length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                labelRowsPerPage="Filas por página:"
+            />
 
             {/* ENROLL MODAL */}
             <Dialog open={enrollModalOpen} onClose={() => setEnrollModalOpen(false)} maxWidth="sm" fullWidth>
