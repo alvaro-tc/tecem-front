@@ -176,12 +176,16 @@ const Students = () => {
             });
     };
 
-    const filteredStudents = students.filter(student =>
-        (student.first_name && student.first_name.toLowerCase().includes(search.toLowerCase())) ||
-        (student.paternal_surname && student.paternal_surname.toLowerCase().includes(search.toLowerCase())) ||
-        (student.ci_number && student.ci_number.toLowerCase().includes(search.toLowerCase())) ||
-        student.email.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredStudents = students.filter(student => {
+        const q = (search || '').toLowerCase();
+        return (
+            (student.first_name || '').toLowerCase().includes(q) ||
+            (student.paternal_surname || '').toLowerCase().includes(q) ||
+            (student.maternal_surname || '').toLowerCase().includes(q) ||
+            (student.ci_number || '').toLowerCase().includes(q) ||
+            (student.email || '').toLowerCase().includes(q)
+        );
+    });
 
     return (
         <MainCard title="Estudiantes" content={false}>
