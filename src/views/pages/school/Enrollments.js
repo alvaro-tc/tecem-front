@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import {
     Grid, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    IconButton, TextField, Alert, Snackbar, Divider,
+    IconButton, TextField, Alert, Snackbar, Divider, InputAdornment,
     Dialog, DialogTitle, DialogContent, DialogActions, Box, List, ListItem, ListItemText, ListItemSecondaryAction
 } from '@material-ui/core';
 import { Autocomplete } from '@material-ui/core'; // Standard Material UI Autocomplete
 import MainCard from '../../../ui-component/cards/MainCard';
-import { IconTrash, IconUserPlus, IconUpload, IconUsers } from '@tabler/icons';
+import { IconTrash, IconUserPlus, IconUpload, IconUsers, IconPencil, IconSearch } from '@tabler/icons';
+import { Chip, CircularProgress as MuiCircularProgress } from '@material-ui/core';
 import axios from 'axios';
 import configData from '../../../config';
 import CourseRequestsDialog from './CourseRequestsDialog';
@@ -34,6 +35,22 @@ const Enrollments = () => {
     // Requests Dialog State
     const [openRequestsDialog, setOpenRequestsDialog] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
+    const [uploadLoading, setUploadLoading] = useState(false);
+
+    // Enrollment modal
+    const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+    const [enrollTab, setEnrollTab] = useState(0); // 0 = search existing, 1 = new
+    const [newStudentForm, setNewStudentForm] = useState({ ci_number: '', first_name: '', paternal_surname: '', maternal_surname: '', email: '', phone: '' });
+    const [enrollNewLoading, setEnrollNewLoading] = useState(false);
+
+    // Table search filter
+    const [tableSearch, setTableSearch] = useState('');
+
+    // Edit student dialog
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editStudent, setEditStudent] = useState(null);
+    const [editLoading, setEditLoading] = useState(false);
+    const [editForm, setEditForm] = useState({ ci_number: '', first_name: '', paternal_surname: '', maternal_surname: '', email: '' });
 
     const fetchPendingRequests = () => {
         if (!activeCourse) return;
@@ -139,9 +156,41 @@ const Enrollments = () => {
             });
     };
 
+    const handleOpenEdit = (enrollment) => {
+        const s = enrollment.student_details || {};
+        setEditStudent(enrollment);
+        setEditForm({
+            ci_number: s.ci_number || '',
+            first_name: s.first_name || '',
+            paternal_surname: s.paternal_surname || '',
+            maternal_surname: s.maternal_surname || '',
+            email: s.email || ''
+        });
+        setEditDialogOpen(true);
+    };
+
+    const handleSaveEdit = () => {
+        if (!editStudent) return;
+        setEditLoading(true);
+        axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
+        axios.patch(`${configData.API_SERVER}manage-users/${editStudent.student_details?.id}/`, editForm)
+            .then(() => {
+                setSnackbar({ open: true, message: 'Estudiante actualizado correctamente', severity: 'success' });
+                fetchEnrollments();
+                setEditDialogOpen(false);
+            })
+            .catch(() => {
+                setSnackbar({ open: true, message: 'Error al actualizar estudiante', severity: 'error' });
+            })
+            .finally(() => setEditLoading(false));
+    };
+
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
         if (!file) return;
+
+        setUploadLoading(true);
+        setSnackbar({ open: true, message: 'Analizando archivo Excel, por favor espere...', severity: 'info' });
 
         const formData = new FormData();
         formData.append('file', file);
@@ -159,6 +208,9 @@ const Enrollments = () => {
             .catch(err => {
                 setSnackbar({ open: true, message: 'Error al analizar archivo', severity: 'error' });
                 event.target.value = null;
+            })
+            .finally(() => {
+                setUploadLoading(false);
             });
     };
 
@@ -247,37 +299,42 @@ const Enrollments = () => {
     return (
         <MainCard title={`Inscripciones - ${activeCourse.subject_details?.name} (${activeCourse.parallel})`}>
 
-            {/* Enrollment Form */}
-            <Grid container spacing={3} alignItems="center" style={{ marginBottom: 24 }}>
-                <Grid item xs={12} md={5}>
+            {/* Enrollment Toolbar */}
+            <Grid container spacing={2} alignItems="center" style={{ marginBottom: 24 }}>
+                <Grid item style={{ minWidth: 280 }}>
                     <Autocomplete
-                        id="student-select"
-                        options={studentOptions}
-                        getOptionLabel={(option) => `${option.paternal_surname || ''} ${option.maternal_surname || ''} ${option.first_name || ''} (${option.ci_number})`}
-                        filterOptions={(x) => x}
-                        value={selectedStudent}
-                        onChange={(event, newValue) => {
-                            setSelectedStudent(newValue);
+                        id="table-student-search"
+                        options={enrollments}
+                        getOptionLabel={(option) =>
+                            typeof option === 'string' ? option :
+                            `${option.student_details?.paternal_surname || ''} ${option.student_details?.maternal_surname || ''} ${option.student_details?.first_name || ''} — CI: ${option.student_details?.ci_number || ''}`
+                        }
+                        filterOptions={(options, state) => {
+                            const q = state.inputValue.toLowerCase();
+                            if (!q) return options;
+                            return options.filter(e => {
+                                const s = e.student_details || {};
+                                return (
+                                    (s.ci_number || '').toLowerCase().includes(q) ||
+                                    (s.paternal_surname || '').toLowerCase().includes(q) ||
+                                    (s.maternal_surname || '').toLowerCase().includes(q) ||
+                                    (s.first_name || '').toLowerCase().includes(q) ||
+                                    (s.email || '').toLowerCase().includes(q)
+                                );
+                            });
                         }}
-                        onInputChange={(event, newInputValue) => {
-                            setInputValue(newInputValue);
-                        }}
+                        onInputChange={(event, newValue) => setTableSearch(newValue)}
+                        onChange={(event, newValue) => setTableSearch(newValue ? (newValue.student_details?.ci_number || '') : '')}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
-                                label="Buscar Estudiante (Apellidos, CI)"
+                                label="Buscar en el paralelo"
                                 variant="outlined"
                                 fullWidth
-                                InputProps={{
-                                    ...params.InputProps,
-                                    endAdornment: (
-                                        <React.Fragment>
-                                            {params.InputProps.endAdornment}
-                                        </React.Fragment>
-                                    ),
-                                }}
                             />
                         )}
+                        clearOnEscape
+                        freeSolo
                     />
                 </Grid>
                 <Grid item>
@@ -285,10 +342,9 @@ const Enrollments = () => {
                         variant="contained"
                         color="secondary"
                         startIcon={<IconUserPlus />}
-                        onClick={handleEnroll}
-                        disabled={!selectedStudent}
+                        onClick={() => setEnrollModalOpen(true)}
                     >
-                        Inscribir
+                        Nueva Inscripción
                     </Button>
                 </Grid>
                 <Grid item>
@@ -300,8 +356,8 @@ const Enrollments = () => {
                         onChange={handleFileUpload}
                     />
                     <label htmlFor="raised-button-file">
-                        <Button variant="outlined" component="span" startIcon={<IconUpload />}>
-                            Subir Excel
+                        <Button variant="outlined" component="span" startIcon={<IconUpload />} disabled={uploadLoading}>
+                            {uploadLoading ? 'Cargando...' : 'Subir Excel'}
                         </Button>
                     </label>
                 </Grid>
@@ -309,10 +365,9 @@ const Enrollments = () => {
                     <Grid item>
                         <Button
                             variant="contained"
-                            // color="default" <--- Removed invalid prop for v5
                             startIcon={<IconUsers />}
                             onClick={() => setOpenRequestsDialog(true)}
-                            style={{ backgroundColor: '#e0e0e0', color: '#333' }} // Explicit grey and dark text
+                            style={{ backgroundColor: '#e0e0e0', color: '#333' }}
                         >
                             Aceptar Inscripciones {pendingCount > 0 ? `(${pendingCount})` : ''}
                         </Button>
@@ -320,12 +375,24 @@ const Enrollments = () => {
                 )}
             </Grid>
 
-            <Divider style={{ marginBottom: 24 }} />
+            <Divider style={{ marginBottom: 16 }} />
+
+            {/* Student Count */}
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip
+                    icon={<IconUsers size="1rem" />}
+                    label={`${enrollments.length} estudiante${enrollments.length !== 1 ? 's' : ''} inscritos`}
+                    color={enrollments.length > 0 ? 'secondary' : 'default'}
+                    variant="outlined"
+                    size="small"
+                />
+            </Box>
 
             <TableContainer>
                 <Table>
                     <TableHead>
                         <TableRow>
+                            <TableCell width={40}>#</TableCell>
                             <TableCell>CI</TableCell>
                             <TableCell>Paterno</TableCell>
                             <TableCell>Materno</TableCell>
@@ -336,13 +403,36 @@ const Enrollments = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {enrollments.length === 0 ? (
+                        {enrollments.filter(e => {
+                            if (!tableSearch) return true;
+                            const q = tableSearch.toLowerCase();
+                            const s = e.student_details || {};
+                            return (
+                                (s.ci_number || '').toLowerCase().includes(q) ||
+                                (s.paternal_surname || '').toLowerCase().includes(q) ||
+                                (s.maternal_surname || '').toLowerCase().includes(q) ||
+                                (s.first_name || '').toLowerCase().includes(q) ||
+                                (s.email || '').toLowerCase().includes(q)
+                            );
+                        }).length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} align="center">No hay estudiantes inscritos.</TableCell>
+                                <TableCell colSpan={8} align="center">No se encontraron estudiantes{tableSearch ? ` para "${tableSearch}"` : ''}.</TableCell>
                             </TableRow>
                         ) : (
-                            enrollments.map((enrollment) => (
+                            enrollments.filter(e => {
+                                if (!tableSearch) return true;
+                                const q = tableSearch.toLowerCase();
+                                const s = e.student_details || {};
+                                return (
+                                    (s.ci_number || '').toLowerCase().includes(q) ||
+                                    (s.paternal_surname || '').toLowerCase().includes(q) ||
+                                    (s.maternal_surname || '').toLowerCase().includes(q) ||
+                                    (s.first_name || '').toLowerCase().includes(q) ||
+                                    (s.email || '').toLowerCase().includes(q)
+                                );
+                            }).map((enrollment, index) => (
                                 <TableRow key={enrollment.id}>
+                                    <TableCell>{index + 1}</TableCell>
                                     <TableCell>{enrollment.student_details?.ci_number || 'N/A'}</TableCell>
                                     <TableCell>{enrollment.student_details?.paternal_surname}</TableCell>
                                     <TableCell>{enrollment.student_details?.maternal_surname}</TableCell>
@@ -350,7 +440,10 @@ const Enrollments = () => {
                                     <TableCell>{enrollment.student_details?.email}</TableCell>
                                     <TableCell align="right">{enrollment.date_enrolled}</TableCell>
                                     <TableCell align="center">
-                                        <IconButton color="error" onClick={() => handleDelete(enrollment.id)}>
+                                        <IconButton color="primary" size="small" onClick={() => handleOpenEdit(enrollment)} title="Editar estudiante">
+                                            <IconPencil size="1.1rem" />
+                                        </IconButton>
+                                        <IconButton color="error" onClick={() => handleDelete(enrollment.id)} title="Eliminar inscripción">
                                             <IconTrash size="1.1rem" />
                                         </IconButton>
                                     </TableCell>
@@ -360,6 +453,126 @@ const Enrollments = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {/* ENROLL MODAL */}
+            <Dialog open={enrollModalOpen} onClose={() => setEnrollModalOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Nueva Inscripción</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button
+                                size="small"
+                                variant={enrollTab === 0 ? 'contained' : 'outlined'}
+                                color="primary"
+                                onClick={() => setEnrollTab(0)}
+                            >
+                                Buscar Estudiante Existente
+                            </Button>
+                            <Button
+                                size="small"
+                                variant={enrollTab === 1 ? 'contained' : 'outlined'}
+                                color="primary"
+                                onClick={() => setEnrollTab(1)}
+                            >
+                                Nuevo Estudiante
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    {enrollTab === 0 ? (
+                        <Box sx={{ pt: 1 }}>
+                            <Autocomplete
+                                id="student-select"
+                                options={studentOptions}
+                                getOptionLabel={(option) => `${option.paternal_surname || ''} ${option.maternal_surname || ''} ${option.first_name || ''} (${option.ci_number})`}
+                                filterOptions={(x) => x}
+                                value={selectedStudent}
+                                onChange={(event, newValue) => setSelectedStudent(newValue)}
+                                onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Buscar por apellidos o CI"
+                                        variant="outlined"
+                                        fullWidth
+                                    />
+                                )}
+                            />
+                            {selectedStudent && (
+                                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                                    <Typography variant="body2"><strong>CI:</strong> {selectedStudent.ci_number}</Typography>
+                                    <Typography variant="body2"><strong>Nombre:</strong> {selectedStudent.paternal_surname} {selectedStudent.maternal_surname} {selectedStudent.first_name}</Typography>
+                                    <Typography variant="body2"><strong>Email:</strong> {selectedStudent.email}</Typography>
+                                </Box>
+                            )}
+                        </Box>
+                    ) : (
+                        <Grid container spacing={2} sx={{ pt: 1 }}>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="CI" value={newStudentForm.ci_number} onChange={(e) => setNewStudentForm({ ...newStudentForm, ci_number: e.target.value })} variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="Nombre" value={newStudentForm.first_name} onChange={(e) => setNewStudentForm({ ...newStudentForm, first_name: e.target.value })} variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="Apellido Paterno" value={newStudentForm.paternal_surname} onChange={(e) => setNewStudentForm({ ...newStudentForm, paternal_surname: e.target.value })} variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="Apellido Materno" value={newStudentForm.maternal_surname} onChange={(e) => setNewStudentForm({ ...newStudentForm, maternal_surname: e.target.value })} variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="Email" type="email" value={newStudentForm.email} onChange={(e) => setNewStudentForm({ ...newStudentForm, email: e.target.value })} variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="Teléfono" value={newStudentForm.phone} onChange={(e) => setNewStudentForm({ ...newStudentForm, phone: e.target.value })} variant="outlined" fullWidth />
+                            </Grid>
+                        </Grid>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => { setEnrollModalOpen(false); setSelectedStudent(null); }} color="primary">
+                        Cancelar
+                    </Button>
+                    {enrollTab === 0 ? (
+                        <Button
+                            onClick={() => {
+                                handleEnroll();
+                                setEnrollModalOpen(false);
+                            }}
+                            color="secondary"
+                            variant="contained"
+                            disabled={!selectedStudent}
+                        >
+                            Inscribir
+                        </Button>
+                    ) : (
+                        <Button
+                            color="secondary"
+                            variant="contained"
+                            disabled={enrollNewLoading || !newStudentForm.ci_number}
+                            onClick={() => {
+                                setEnrollNewLoading(true);
+                                axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
+                                axios.post(`${configData.API_SERVER}enrollments/confirm_bulk_enrollment/`, {
+                                    course_id: activeCourse.id,
+                                    student_ids: [],
+                                    students_to_create: [newStudentForm]
+                                })
+                                    .then(() => {
+                                        setSnackbar({ open: true, message: 'Estudiante creado e inscrito correctamente', severity: 'success' });
+                                        fetchEnrollments();
+                                        setEnrollModalOpen(false);
+                                        setNewStudentForm({ ci_number: '', first_name: '', paternal_surname: '', maternal_surname: '', email: '', phone: '' });
+                                    })
+                                    .catch(() => setSnackbar({ open: true, message: 'Error al crear e inscribir estudiante', severity: 'error' }))
+                                    .finally(() => setEnrollNewLoading(false));
+                            }}
+                        >
+                            {enrollNewLoading ? 'Guardando...' : 'Crear e Inscribir'}
+                        </Button>
+                    )}
+                </DialogActions>
+            </Dialog>
 
             {/* PREVIEW DIALOG */}
             <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
@@ -476,6 +689,69 @@ const Enrollments = () => {
                     fetchPendingRequests();
                 }}
             />
+
+            {/* EDIT STUDENT DIALOG */}
+            <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Editar Estudiante</DialogTitle>
+                <DialogContent>
+                    <Grid container spacing={2} style={{ marginTop: 4 }}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="CI"
+                                value={editForm.ci_number}
+                                onChange={(e) => setEditForm({ ...editForm, ci_number: e.target.value })}
+                                variant="outlined"
+                                fullWidth
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Nombre"
+                                value={editForm.first_name}
+                                onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                                variant="outlined"
+                                fullWidth
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Apellido Paterno"
+                                value={editForm.paternal_surname}
+                                onChange={(e) => setEditForm({ ...editForm, paternal_surname: e.target.value })}
+                                variant="outlined"
+                                fullWidth
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Apellido Materno"
+                                value={editForm.maternal_surname}
+                                onChange={(e) => setEditForm({ ...editForm, maternal_surname: e.target.value })}
+                                variant="outlined"
+                                fullWidth
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Email"
+                                type="email"
+                                value={editForm.email}
+                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                variant="outlined"
+                                fullWidth
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditDialogOpen(false)} color="primary" disabled={editLoading}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleSaveEdit} color="secondary" variant="contained" disabled={editLoading}>
+                        {editLoading ? 'Guardando...' : 'Guardar Cambios'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* DELETE CONFIRMATION DIALOG */}
             <Dialog

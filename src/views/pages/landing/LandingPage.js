@@ -72,8 +72,8 @@ const LandingPage = () => {
                 settings: { slidesToShow: 2, slidesToScroll: 1, infinite: courses.length > 2 }
             },
             {
-                breakpoint: 600,
-                settings: { slidesToShow: 1, slidesToScroll: 1, initialSlide: 0 }
+                breakpoint: 768,
+                settings: { slidesToShow: 1, slidesToScroll: 1, infinite: courses.length > 1, dots: true }
             }
         ]
     };
@@ -177,7 +177,7 @@ const LandingPage = () => {
             {/* Courses Slider Section */}
             <Box sx={{
                 background: `linear-gradient(135deg, ${theme.palette.secondary.light}15 0%, ${theme.palette.primary.light}15 100%)`,
-                py: 8
+                py: { xs: 5, md: 8 }
             }}>
                 <Container maxWidth="lg">
                     <Typography variant="h2" align="center" sx={{ mb: 2, fontWeight: 700, color: theme.palette.primary.main }}>
@@ -195,10 +195,90 @@ const LandingPage = () => {
                             </Typography>
                         </Box>
                     ) : courses.length > 0 ? (
-                        <Box sx={{ px: { xs: 2, md: 4 } }}>
-                            <Slider {...sliderSettings}>
+                        <>
+                            {/* ── MOBILE: native scroll-snap carousel ── */}
+                            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        overflowX: 'auto',
+                                        scrollSnapType: 'x mandatory',
+                                        WebkitOverflowScrolling: 'touch',
+                                        gap: 2,
+                                        pb: 2,
+                                        px: 2,
+                                        '&::-webkit-scrollbar': { display: 'none' },
+                                        scrollbarWidth: 'none',
+                                    }}
+                                >
+                                    {courses.map((course) => (
+                                        <Box
+                                            key={course.id}
+                                            sx={{
+                                                flex: '0 0 calc(100vw - 48px)',
+                                                scrollSnapAlign: 'start',
+                                                borderRadius: 4,
+                                                overflow: 'hidden',
+                                                boxShadow: theme.shadows[4],
+                                                background: theme.palette.background.paper,
+                                            }}
+                                        >
+                                            <Box sx={{ height: 160, overflow: 'hidden', position: 'relative' }}>
+                                                {course.image ? (
+                                                    <img src={getImageUrl(course.image)} alt={course.subject_details?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <Box sx={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.primary.main} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Typography variant="h1" sx={{ fontSize: '3.5rem' }}>📚</Typography>
+                                                    </Box>
+                                                )}
+                                                <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.25) 100%)' }} />
+                                            </Box>
+                                            <Box sx={{ p: 2.5 }}>
+                                                <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5, textTransform: 'uppercase', lineHeight: 1.2 }}>
+                                                    {course.subject_details?.name} ({course.subject_details?.code})
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ color: theme.palette.grey[600], mb: 1.5 }}>
+                                                    Paralelo {course.parallel}
+                                                </Typography>
+                                                {getScheduleItems(course.schedule).length > 0 && (
+                                                    <Box sx={{ mb: 2, p: 1, bgcolor: theme.palette.grey[50], borderRadius: 2 }}>
+                                                        {getScheduleItems(course.schedule).map((item, idx) => (
+                                                            <Typography key={idx} variant="caption" display="block" color="textSecondary" sx={{ fontWeight: 500 }}>{item}</Typography>
+                                                        ))}
+                                                    </Box>
+                                                )}
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+                                                    {course.whatsapp_link && (
+                                                        <Button variant="contained" href={course.whatsapp_link} target="_blank" rel="noopener noreferrer" fullWidth
+                                                            sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '0.95rem', background: '#25D366', '&:hover': { background: '#1ebe5d' } }}>
+                                                            💬 Unirse al grupo de WhatsApp
+                                                        </Button>
+                                                    )}
+                                                    {course.platform_link && (
+                                                        <Button variant="outlined" color="primary" href={course.platform_link} target="_blank" rel="noopener noreferrer" fullWidth
+                                                            sx={{ borderRadius: 2, py: 1.2, fontWeight: 600, textTransform: 'none', fontSize: '0.95rem' }}>
+                                                            🎓 Entrar a la Plataforma Virtual
+                                                        </Button>
+                                                    )}
+                                                </Box>
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
+                                {courses.length > 1 && (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.75, mt: 1.5 }}>
+                                        {courses.map((_, i) => (
+                                            <Box key={i} sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: i === 0 ? theme.palette.primary.main : theme.palette.grey[300] }} />
+                                        ))}
+                                    </Box>
+                                )}
+                            </Box>
+
+                            {/* ── DESKTOP: react-slick slider ── */}
+                            <Box sx={{ display: { xs: 'none', md: 'block' }, px: 4 }}>
+                                <Slider {...sliderSettings}>
                                 {courses.map((course) => (
-                                    <Box key={course.id} sx={{ p: 2 }}>
+                                    <Box key={course.id} sx={{ p: { xs: 1, md: 2 } }}>
                                         <MainCard
                                             content={false}
                                             boxShadow
@@ -309,7 +389,8 @@ const LandingPage = () => {
                                     </Box>
                                 ))}
                             </Slider>
-                        </Box>
+                            </Box>
+                        </>
                     ) : (
                         <Box textAlign="center" py={10}>
                             <Typography variant="h1" sx={{ fontSize: '5rem', mb: 2, opacity: 0.3 }}>📚</Typography>

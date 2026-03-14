@@ -93,21 +93,17 @@ const SearchSection = () => {
             axios.get(configData.API_SERVER + 'courses')
                 .then(response => {
                     setCourses(response.data);
-                    if (response.data.length > 0 && (!activeCourse || (account.user && account.user.active_course && activeCourse.id !== account.user.active_course))) {
+                    // Auto-select only if no active course is set yet
+                    if (response.data.length > 0 && !activeCourse) {
                         let selected = null;
-                        // 1. Try to load from user profile
                         if (account.user && account.user.active_course) {
                             selected = response.data.find(c => c.id === account.user.active_course);
                         }
-
-                        // 2. Fallback to first non-archived
                         if (!selected) {
                             selected = response.data.find(c => !c.subject_details?.archived) || response.data[0];
                         }
-
                         if (selected) {
                             dispatch({ type: SET_ACTIVE_COURSE, payload: selected });
-                            setValue(`${selected.subject_details?.name} - ${selected.parallel}`);
                         }
                     }
                 })
@@ -115,21 +111,27 @@ const SearchSection = () => {
         }
     };
 
-    useEffect(() => {
-        fetchCourses();
-        if (account.user) {
-            console.log("SearchSection: User loaded", account.user);
-            console.log("SearchSection: Active Course in User", account.user.active_course);
+    // Refreshes the course list without triggering auto-selection
+    const loadCourseList = () => {
+        if (account.token) {
+            axios.defaults.headers.common['Authorization'] = `Token ${account.token}`;
+            axios.get(configData.API_SERVER + 'courses')
+                .then(response => setCourses(response.data))
+                .catch(error => console.error("Error fetching courses", error));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [account.token, account.user]);
+    };
 
     const handleToggle = () => {
         setOpen((prevOpen) => !prevOpen);
         if (!open) {
-            fetchCourses(); // Refresh on open
+            loadCourseList(); // Refresh list only — no auto-selection
         }
     };
+
+    useEffect(() => {
+        fetchCourses();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [account.token, account.user]);
 
     const [showArchived, setShowArchived] = useState(false);
     const [selectedPeriod, setSelectedPeriod] = useState('All');
@@ -187,7 +189,7 @@ const SearchSection = () => {
 
     const handleSelect = (course) => {
         setOpen(false);
-        setValue(`${course.subject_details?.name} - ${course.parallel}`);
+        setValue(''); // Clear input so user can easily search again
         dispatch({ type: SET_ACTIVE_COURSE, payload: course });
 
         // Persist selection
@@ -361,7 +363,7 @@ const SearchSection = () => {
                                                 <ListItemText primary="Sugerencias" primaryTypographyProps={{ variant: 'caption', color: 'textSecondary' }} />
                                             </ListItem>
                                         )}
-                                        {filteredCourses.slice(0, value === '' ? 3 : undefined).map((course) => (
+                                        {filteredCourses.map((course) => (
                                             <ListItem button key={course.id} onClick={() => handleSelect(course)}>
                                                 <ListItemText
                                                     primary={`${course.subject_details?.name} - ${course.parallel}`}
