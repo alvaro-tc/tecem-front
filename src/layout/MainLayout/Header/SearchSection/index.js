@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { makeStyles } from '@material-ui/styles';
 import { Avatar, Box, ButtonBase, Card, CardContent, Grid, InputAdornment, OutlinedInput, Popper, List, ListItem, ListItemText, Paper, ClickAwayListener, Menu, MenuItem, FormControlLabel, Checkbox, Select, InputLabel, FormControl } from '@material-ui/core';
-import PopupState, { bindPopper, bindToggle } from 'material-ui-popup-state';
+import PopupState, { bindPopper } from 'material-ui-popup-state';
 import Transitions from '../../../../ui-component/extended/Transitions';
 import { IconAdjustmentsHorizontal, IconSearch, IconX } from '@tabler/icons';
 import axios from 'axios';
@@ -208,14 +208,21 @@ const SearchSection = () => {
 
     return (
         <React.Fragment>
-            {/* Mobile View omitted for brevity, focusing on Desktop logic below */}
+            {/* Mobile View - Fixed: ClickAwayListener wraps Card, onMouseDown prevents premature close */}
             <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                 <PopupState variant="popper" popupId="demo-popup-popper">
                     {(popupState) => (
                         <React.Fragment>
                             <Box sx={{ ml: 2 }}>
                                 <ButtonBase sx={{ borderRadius: '12px' }}>
-                                    <Avatar variant="rounded" className={classes.headerAvatar} {...bindToggle(popupState)}>
+                                    <Avatar
+                                        variant="rounded"
+                                        className={classes.headerAvatar}
+                                        onClick={() => {
+                                            loadCourseList();
+                                            popupState.open(undefined);
+                                        }}
+                                    >
                                         <IconSearch stroke={1.5} size="1.2rem" />
                                     </Avatar>
                                 </ButtonBase>
@@ -223,44 +230,90 @@ const SearchSection = () => {
                             <Popper {...bindPopper(popupState)} transition className={classes.popperContainer}>
                                 {({ TransitionProps }) => (
                                     <Transitions type="zoom" {...TransitionProps} sx={{ transformOrigin: 'center left' }}>
-                                        <Card className={classes.card}>
-                                            <CardContent className={classes.cardContent}>
-                                                <Grid container alignItems="center" justifyContent="space-between">
-                                                    <Grid item xs>
-                                                        <OutlinedInput
-                                                            className={classes.searchControl}
-                                                            id="input-search-header"
-                                                            value={value}
-                                                            onChange={handleSearch}
-                                                            placeholder="Buscar Paralelo"
-                                                            startAdornment={
-                                                                <InputAdornment position="start">
-                                                                    <IconSearch stroke={1.5} size="1rem" className={classes.startAdornment} />
-                                                                </InputAdornment>
-                                                            }
-                                                            endAdornment={
-                                                                <InputAdornment position="end">
-                                                                    <ButtonBase sx={{ borderRadius: '12px' }}>
-                                                                        <Avatar variant="rounded" className={classes.headerAvatar}>
-                                                                            <IconAdjustmentsHorizontal stroke={1.5} size="1.3rem" />
-                                                                        </Avatar>
-                                                                    </ButtonBase>
-                                                                    <Box sx={{ ml: 2 }}>
-                                                                        <ButtonBase sx={{ borderRadius: '12px' }}>
-                                                                            <Avatar variant="rounded" className={classes.closeAvatar} {...bindToggle(popupState)}>
-                                                                                <IconX stroke={1.5} size="1.3rem" />
-                                                                            </Avatar>
-                                                                        </ButtonBase>
-                                                                    </Box>
-                                                                </InputAdornment>
-                                                            }
-                                                            aria-describedby="search-helper-text"
-                                                            inputProps={{ 'aria-label': 'weight' }}
-                                                        />
+                                        {/* ClickAwayListener aquí para que los clicks internos no cierren el popup */}
+                                        <ClickAwayListener onClickAway={popupState.close}>
+                                            <Card className={classes.card}>
+                                                <CardContent className={classes.cardContent}>
+                                                    <Grid container alignItems="center" justifyContent="space-between">
+                                                        <Grid item xs>
+                                                            <OutlinedInput
+                                                                className={classes.searchControl}
+                                                                id="input-search-header-mobile"
+                                                                value={value}
+                                                                onChange={(e) => setValue(e.target.value)}
+                                                                onFocus={() => loadCourseList()}
+                                                                placeholder="Buscar Paralelo"
+                                                                startAdornment={
+                                                                    <InputAdornment position="start">
+                                                                        <IconSearch stroke={1.5} size="1rem" className={classes.startAdornment} />
+                                                                    </InputAdornment>
+                                                                }
+                                                                endAdornment={
+                                                                    <InputAdornment position="end">
+                                                                        <Box sx={{ ml: 2 }}>
+                                                                            <ButtonBase sx={{ borderRadius: '12px' }}>
+                                                                                <Avatar
+                                                                                    variant="rounded"
+                                                                                    className={classes.closeAvatar}
+                                                                                    onMouseDown={(e) => e.preventDefault()}
+                                                                                    onClick={() => {
+                                                                                        setValue('');
+                                                                                        popupState.close();
+                                                                                    }}
+                                                                                >
+                                                                                    <IconX stroke={1.5} size="1.3rem" />
+                                                                                </Avatar>
+                                                                            </ButtonBase>
+                                                                        </Box>
+                                                                    </InputAdornment>
+                                                                }
+                                                                aria-describedby="search-helper-text-mobile"
+                                                                inputProps={{ 'aria-label': 'Buscar paralelo' }}
+                                                            />
+                                                        </Grid>
                                                     </Grid>
-                                                </Grid>
-                                            </CardContent>
-                                        </Card>
+                                                    {/* Lista de paralelos para móvil */}
+                                                    <List sx={{ maxHeight: 300, overflow: 'auto', mt: 1, p: 0 }}>
+                                                        {filteredCourses.length === 0 && (
+                                                            <ListItem style={{ padding: '8px 12px' }}>
+                                                                <ListItemText
+                                                                    primary="Sin resultados"
+                                                                    primaryTypographyProps={{ variant: 'caption', color: 'textSecondary' }}
+                                                                />
+                                                            </ListItem>
+                                                        )}
+                                                        {value === '' && filteredCourses.length > 0 && (
+                                                            <ListItem style={{ backgroundColor: '#f5f5f5', padding: '4px 12px' }}>
+                                                                <ListItemText
+                                                                    primary="Sugerencias"
+                                                                    primaryTypographyProps={{ variant: 'caption', color: 'textSecondary' }}
+                                                                />
+                                                            </ListItem>
+                                                        )}
+                                                        {filteredCourses.map((course) => (
+                                                            <ListItem
+                                                                button
+                                                                key={course.id}
+                                                                onMouseDown={(e) => e.preventDefault()}
+                                                                onClick={() => {
+                                                                    handleSelect(course);
+                                                                    popupState.close();
+                                                                }}
+                                                                sx={{
+                                                                    borderRadius: '8px',
+                                                                    '&:hover': { backgroundColor: 'action.hover' }
+                                                                }}
+                                                            >
+                                                                <ListItemText
+                                                                    primary={`${course.subject_details?.name} - ${course.parallel}`}
+                                                                    secondary={`${course.subject_details?.period_details ? course.subject_details.period_details.name : ''} - ${course.subject_details?.program_details ? course.subject_details.program_details.name : ''}`}
+                                                                />
+                                                            </ListItem>
+                                                        ))}
+                                                    </List>
+                                                </CardContent>
+                                            </Card>
+                                        </ClickAwayListener>
                                     </Transitions>
                                 )}
                             </Popper>
