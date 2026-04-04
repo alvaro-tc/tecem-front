@@ -70,6 +70,10 @@ const TaskGrading = () => {
 
     const [actionsMenuAnchor, setActionsMenuAnchor] = useState(null);
 
+    // Mobile grading modal state
+    const [mobileModalOpen, setMobileModalOpen] = useState(false);
+    const [mobileSelectedRow, setMobileSelectedRow] = useState(null);
+
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [search, setSearch] = useState('');
 
@@ -488,13 +492,13 @@ const TaskGrading = () => {
             {/* Tasks Table or Mobile View */}
             {selectedSubCrit && (
                 isMobile ? (
-                    <List style={{ marginTop: 10 }}>
+                    <List style={{ marginTop: 10, padding: 0 }}>
                         {loading ? (
                             <div style={{ textAlign: 'center', padding: 20 }}><CircularProgress /></div>
                         ) : filteredRows.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: 20 }}>No hay estudiantes o tareas.</div>
                         ) : (
-                            filteredRows.map(row => {
+                            filteredRows.map((row, index) => {
                                 let totalWeight = 0;
                                 let weightedSum = 0;
                                 tasks.forEach(task => {
@@ -503,85 +507,81 @@ const TaskGrading = () => {
                                     totalWeight += task.weight;
                                 });
                                 const average = totalWeight > 0 ? (weightedSum / totalWeight).toFixed(2) : '-';
-
-                                const renderTaskContent = (task) => {
-                                    const score = row.scores[task.id];
-                                    const letter = getLetterFromScore(score);
-
-                                    return (
-                                        <div key={task.id} style={{ display: 'flex', flexDirection: 'column', marginBottom: visibleTasks.length === 1 ? 0 : 16, width: visibleTasks.length === 1 ? 'auto' : '100%' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: visibleTasks.length === 1 ? 0 : 8, width: '100%' }}>
-                                                {visibleTasks.length > 1 && (
-                                                    <Typography variant="body2" style={{ fontWeight: 600, marginRight: 'auto' }}>{task.name}</Typography>
-                                                )}
-                                                {letter && !editMode[`${row.enrollment_id}-${task.id}`] ? (
-                                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                        <Typography variant="subtitle1" style={{ fontWeight: 'bold', marginRight: 8, color: theme.palette.primary.main }}>{letter}</Typography>
-                                                        {!task.is_locked && (
-                                                            <IconButton size="small" onClick={() => toggleEditMode(row.enrollment_id, task.id)} style={{ padding: 4 }}>
-                                                                <IconPencil size="1.1rem" stroke={1.5} />
-                                                            </IconButton>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ display: 'flex', gap: 4 }}>
-                                                        {Object.keys(LETTER_SCORES).map(l => (
-                                                            <Button
-                                                                key={l}
-                                                                variant={letter === l ? "contained" : "outlined"}
-                                                                size="small"
-                                                                color="primary"
-                                                                style={{
-                                                                    minWidth: 32,
-                                                                    height: 32,
-                                                                    padding: 0,
-                                                                }}
-                                                                onClick={() => handleGradeClick(row.enrollment_id, task.id, l)}
-                                                                disabled={task.is_locked}
-                                                            >
-                                                                {l}
-                                                            </Button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                };
-
-                                if (visibleTasks.length === 1) {
-                                    return (
-                                        <MainCard key={row.enrollment_id} style={{ marginBottom: 16 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 4 }}>
-                                                <Typography variant="subtitle1" style={{ fontWeight: 'bold', marginRight: 16 }}>
-                                                    {row.paterno} {row.materno} {row.nombre}
-                                                </Typography>
-                                                <div style={{ flexShrink: 0 }}>
-                                                    {renderTaskContent(visibleTasks[0])}
-                                                </div>
-                                            </div>
-                                        </MainCard>
-                                    );
-                                }
+                                const hasGrades = visibleTasks.some(t => row.scores[t.id] !== null && row.scores[t.id] !== undefined && row.scores[t.id] !== '');
 
                                 return (
-                                    <Accordion key={row.enrollment_id}>
-                                        <AccordionSummary expandIcon={<IconChevronDown />}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                                <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
+                                    <ListItem
+                                        key={row.enrollment_id}
+                                        button
+                                        onClick={() => {
+                                            setMobileSelectedRow(row);
+                                            setMobileModalOpen(true);
+                                        }}
+                                        style={{
+                                            borderBottom: '1px solid',
+                                            borderColor: theme.palette.divider,
+                                            padding: '12px 16px',
+                                            backgroundColor: index % 2 === 0 ? 'transparent' : (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                            <div>
+                                                <Typography variant="body1" style={{ fontWeight: 600 }}>
                                                     {row.paterno} {row.materno} {row.nombre}
                                                 </Typography>
-                                                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4 }}>
-                                                    <Typography variant="body2" style={{ fontWeight: 'bold', color: '#1565c0' }}>
+                                                {tasks.length > 0 && (
+                                                    <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
                                                         Promedio: {average}
                                                     </Typography>
-                                                </div>
+                                                )}
                                             </div>
-                                        </AccordionSummary>
-                                        <AccordionDetails style={{ flexDirection: 'column', padding: '0 16px 16px' }}>
-                                            {visibleTasks.map(task => renderTaskContent(task))}
-                                        </AccordionDetails>
-                                    </Accordion>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {visibleTasks.slice(0, 3).map(task => {
+                                                    const letter = getLetterFromScore(row.scores[task.id]);
+                                                    return letter ? (
+                                                        <span
+                                                            key={task.id}
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                width: 28,
+                                                                height: 28,
+                                                                borderRadius: '50%',
+                                                                backgroundColor: theme.palette.primary.main,
+                                                                color: '#fff',
+                                                                fontWeight: 'bold',
+                                                                fontSize: '0.8rem',
+                                                            }}
+                                                        >
+                                                            {letter}
+                                                        </span>
+                                                    ) : (
+                                                        <span
+                                                            key={task.id}
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                width: 28,
+                                                                height: 28,
+                                                                borderRadius: '50%',
+                                                                border: `2px dashed ${theme.palette.divider}`,
+                                                                color: theme.palette.text.disabled,
+                                                                fontSize: '0.7rem',
+                                                            }}
+                                                        >
+                                                            —
+                                                        </span>
+                                                    );
+                                                })}
+                                                {visibleTasks.length > 3 && (
+                                                    <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>+{visibleTasks.length - 3}</Typography>
+                                                )}
+                                                <IconPencil size="1rem" color={theme.palette.text.secondary} />
+                                            </div>
+                                        </div>
+                                    </ListItem>
                                 );
                             })
                         )}
@@ -710,6 +710,88 @@ const TaskGrading = () => {
                     </MenuItem>
                 ))}
             </Menu>
+
+            {/* Mobile Grading Modal */}
+            <Dialog
+                open={mobileModalOpen}
+                onClose={() => {
+                    setMobileModalOpen(false);
+                    setMobileSelectedRow(null);
+                }}
+                fullWidth
+                maxWidth="xs"
+            >
+                {mobileSelectedRow && (
+                    <>
+                        <DialogTitle style={{ paddingBottom: 8 }}>
+                            <Typography variant="subtitle1" style={{ fontWeight: 'bold', lineHeight: 1.3 }}>
+                                {mobileSelectedRow.paterno} {mobileSelectedRow.materno} {mobileSelectedRow.nombre}
+                            </Typography>
+                        </DialogTitle>
+                        <DialogContent style={{ paddingTop: 0 }}>
+                            {visibleTasks.length === 0 ? (
+                                <Typography variant="body2" color="textSecondary">No hay tareas visibles.</Typography>
+                            ) : (
+                                visibleTasks.map(task => {
+                                    // Use live data from rows (mobileSelectedRow may be stale after grading)
+                                    const liveRow = rows.find(r => r.enrollment_id === mobileSelectedRow.enrollment_id) || mobileSelectedRow;
+                                    const score = liveRow.scores[task.id];
+                                    const letter = getLetterFromScore(score);
+                                    return (
+                                        <div key={task.id} style={{ marginBottom: 20 }}>
+                                            <Typography variant="body2" style={{ fontWeight: 600, marginBottom: 8 }}>
+                                                {task.name}
+                                                {task.is_locked && <IconLock size="0.9rem" color="red" style={{ marginLeft: 6, verticalAlign: 'middle' }} />}
+                                            </Typography>
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                                {Object.keys(LETTER_SCORES).map(l => (
+                                                    <Button
+                                                        key={l}
+                                                        variant={letter === l ? 'contained' : 'outlined'}
+                                                        color="primary"
+                                                        size="medium"
+                                                        disabled={task.is_locked}
+                                                        style={{
+                                                            minWidth: 48,
+                                                            height: 48,
+                                                            fontSize: '1rem',
+                                                            fontWeight: 'bold',
+                                                        }}
+                                                        onClick={() => {
+                                                            handleGradeClick(liveRow.enrollment_id, task.id, l);
+                                                            // Update modal's reference row to reflect new score
+                                                            setMobileSelectedRow(prev => ({
+                                                                ...prev,
+                                                                scores: { ...prev.scores, [task.id]: LETTER_SCORES[l] }
+                                                            }));
+                                                        }}
+                                                    >
+                                                        {l}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </DialogContent>
+                        <DialogActions>
+                            <Button
+                                onClick={() => {
+                                    setMobileModalOpen(false);
+                                    setMobileSelectedRow(null);
+                                }}
+                                color="primary"
+                                variant="contained"
+                                fullWidth
+                                style={{ margin: '0 16px 8px' }}
+                            >
+                                Cerrar
+                            </Button>
+                        </DialogActions>
+                    </>
+                )}
+            </Dialog>
 
             {/* Floating Action Button and Menu */}
             <Fab

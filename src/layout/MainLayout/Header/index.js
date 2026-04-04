@@ -46,7 +46,7 @@ const Header = ({ handleLeftDrawerToggle }) => {
     const activeCourse = useSelector((state) => state.account.activeCourse);
 
     return (
-        <React.Fragment>
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             {/* logo & toggler button */}
             <div className={classes.boxContainer}>
                 <Box component="span" sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
@@ -62,6 +62,49 @@ const Header = ({ handleLeftDrawerToggle }) => {
             {/* header search */}
             <SearchSection theme="light" />
 
+            {/* Mobile: active course name centered */}
+            <Box
+                sx={{
+                    display: { xs: 'flex', md: 'none' },
+                    flexGrow: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    overflow: 'hidden',
+                    px: 1,
+                }}
+            >
+                {activeCourse && (
+                    <Box
+                        sx={{
+                            px: 1.5,
+                            py: 0.75,
+                            borderRadius: '12px',
+                            border: '1px solid',
+                            borderColor: (theme) => theme.palette.primary.light,
+                            bgcolor: (theme) => theme.palette.primary.light,
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                        }}
+                    >
+                        <Typography
+                            variant="body2"
+                            noWrap
+                            sx={{
+                                fontWeight: 700,
+                                letterSpacing: '0.04em',
+                                textTransform: 'uppercase',
+                                color: 'primary.dark',
+                                fontSize: '0.78rem',
+                                textAlign: 'center',
+                            }}
+                        >
+                            {activeCourse.subject_details?.name || 'Sin materia'}{activeCourse.parallel ? ` "${activeCourse.parallel}"` : ''}
+                        </Typography>
+                    </Box>
+                )}
+            </Box>
+
+            {/* Desktop: course info chips */}
             {activeCourse && (
                 <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', ml: 2 }}>
                     <Box sx={{
@@ -106,10 +149,9 @@ const Header = ({ handleLeftDrawerToggle }) => {
             )}
 
             <div className={classes.grow} />
-            <div className={classes.grow} />
 
             <ProfileSection />
-        </React.Fragment>
+        </Box>
     );
 };
 

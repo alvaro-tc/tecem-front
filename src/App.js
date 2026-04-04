@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
 import { ThemeProvider } from '@material-ui/core/styles';
@@ -12,11 +12,17 @@ import theme from './themes';
 
 // project imports
 import NavigationScroll from './layout/NavigationScroll';
+import { setupAxiosInterceptors } from './utils/axiosSetup';
 
 //-----------------------|| APP ||-----------------------//
 
 const App = () => {
     const customization = useSelector((state) => state.customization);
+
+    // Set up axios interceptor to handle 401 (token expired) globally
+    useEffect(() => {
+        setupAxiosInterceptors();
+    }, []);
 
     return (
         <StyledEngineProvider injectFirst>
